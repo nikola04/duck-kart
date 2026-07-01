@@ -19,4 +19,8 @@ namespace engine {
     Window::~Window() {
         SDL_DestroyWindow(m_window);
     }
+
+    SDL_Window* Window::handle() const {
+        return m_window;
+    }
 }

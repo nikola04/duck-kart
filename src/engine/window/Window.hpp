@@ -23,7 +23,7 @@ namespace engine {
             Window(const Window&) = delete;
             Window& operator = (const Window&) = delete;
 
-            SDL_Window* nativeHandle() const;
+            SDL_Window* handle() const;
 
             int width() const;
             int height() const;

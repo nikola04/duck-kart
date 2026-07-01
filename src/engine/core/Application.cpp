@@ -6,8 +6,7 @@ namespace engine {
         .title = "Duck Karts",
         .width = 1280,
         .height = 720
-    }) {
-    }
+    }), m_renderer(m_window) {}
 
     int Application::run() {
         auto previous_time = SDL_GetTicks();
@@ -25,12 +24,12 @@ namespace engine {
             previous_time = current_time;
 
             update(dt);
+            m_renderer.render();
         }
 
         return 0;
     }
 
     void Application::update(float dt) {
-
     }
 }

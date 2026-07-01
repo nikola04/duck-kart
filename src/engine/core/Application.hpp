@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../window/Window.hpp"
 #include "./SDLContext.hpp"
+#include "../window/Window.hpp"
+#include "../graphics/Renderer.hpp"
 
 namespace engine {
     class Application {
@@ -18,5 +19,6 @@ namespace engine {
             bool m_running = true;
             SDLContext m_context;
             Window m_window;
+            Renderer m_renderer;
     };
 }
