@@ -13,7 +13,10 @@ namespace engine {
             int run();
 
         protected:
-            virtual void update(float dt);
+            virtual void update(float dt) {};
+            virtual void render() {};
+
+            Renderer& renderer();
 
         private:
             bool m_running = true;

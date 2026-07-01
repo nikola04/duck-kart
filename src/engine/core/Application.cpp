@@ -24,12 +24,18 @@ namespace engine {
             previous_time = current_time;
 
             update(dt);
-            m_renderer.render();
+
+            m_renderer.beginFrame();
+            m_renderer.beginRenderPass();
+            render();
+            m_renderer.endRenderPass();
+            m_renderer.endFrame();
         }
 
         return 0;
     }
 
-    void Application::update(float dt) {
+    Renderer& Application::renderer() {
+        return m_renderer;
     }
 }

@@ -1,8 +1,18 @@
-#include "engine/core/Application.hpp"
+#include "game/Game.hpp"
 
-int main() {
-    engine::Application app;
-    app.run();
+#include <exception>
+#include <iostream>
 
-    return 0;
+int main()
+{
+    try
+    {
+        Game game;
+        return game.run();
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+        return 1;
+    }
 }

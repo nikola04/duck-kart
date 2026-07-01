@@ -10,11 +10,17 @@ find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
 
 add_executable(main
     src/main.cpp
+
     src/engine/core/Application.cpp
     src/engine/core/SDLContext.cpp
     src/engine/graphics/Renderer.cpp
+    src/engine/graphics/Mesh.cpp
+    src/engine/graphics/RenderMesh.cpp
+    src/engine/graphics/Shader.cpp
     src/engine/window/Window.cpp
+
     src/game/Game.cpp
+    src/game/meshes/TriangleMesh.cpp
 )
 
 target_link_libraries(main SDL3::SDL3)
