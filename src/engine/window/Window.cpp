@@ -1,0 +1,22 @@
+#include "Window.hpp"
+
+namespace engine {
+    Window::Window(const WindowSettings& settings): m_width(settings.width), m_height(settings.height) {
+        SDL_WindowFlags flags = 0;
+
+        flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
+        if (settings.resizable)
+            flags |= SDL_WINDOW_RESIZABLE;
+        if (settings.borderless)
+            flags |= SDL_WINDOW_BORDERLESS;
+
+        m_window = SDL_CreateWindow(settings.title.c_str(), settings.width, settings.height, flags);
+
+        if (!m_window)
+            throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
+    }
+
+    Window::~Window() {
+        SDL_DestroyWindow(m_window);
+    }
+}
