@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
 find_package(glm REQUIRED)
+# find_package(tinygltf REQUIRED)
 
 add_executable(main
     src/main.cpp
@@ -22,9 +23,14 @@ add_executable(main
     src/engine/math/Transform.cpp
     src/engine/scene/Camera.cpp
     src/engine/window/Window.cpp
+    src/engine/assets/AssetsManager.cpp
+    src/engine/assets/GLTFLoader.cpp
 
     src/game/Game.cpp
     src/game/meshes/PyramidMesh.cpp
 )
 
 target_link_libraries(main PRIVATE SDL3::SDL3 glm::glm)
+
+find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
+target_include_directories(main PRIVATE ${TINYGLTF_INCLUDE_DIRS})

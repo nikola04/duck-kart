@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <iostream>
+#include <tiny_gltf.h>
 
 int main()
 {

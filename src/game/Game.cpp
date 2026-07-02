@@ -1,28 +1,29 @@
 #include "Game.hpp"
 #include "meshes/PyramidMesh.hpp"
-#include <iomanip>
-#include <iostream>
+#include "../engine/assets/GLTFLoader.hpp"
 
-Game::Game()
-    : engine::Application(),
-        m_camera(),
-        m_pyramideMesh(game::createPyramidMesh()),
-        m_pyramideRenderMesh(std::make_unique<engine::RenderMesh>(
-            renderer().createRenderMesh(m_pyramideMesh))) {
-                m_pyramideTransform.position = {0.0f, 0.0f, 0.0f};
-                m_pyramideTransform.rotation = {0.0f, 0.0f, 0.0f};
-                m_pyramideTransform.scale = {1.0f, 1.0f, 1.0f};
+Game::Game(): engine::Application(), m_assets(renderer()), m_camera(), m_objects() {
+    engine::Mesh pyramidMesh = game::createPyramidMesh();
+    // engine::RenderMesh* pyramid = m_assets.createRenderMesh("pyramid", pyramidMesh);
 
-                m_camera.transform.position = {0.0f, 0.0f, 1.5f};
-                m_camera.fov = 70.0f;
-                m_camera.near_plane = 0.1f;
-                m_camera.far_plane = 100.0f;
-            }
+    // m_objects.push_back({
+    //     .mesh = pyramid
+    // });
+
+    // m_objects.push_back(engine::RenderObject {
+    //     .mesh = pyramid,
+    //     .transform = { .position = {5.0f, 1.0f, 1.0f} }
+    // });
+
+    engine::Mesh kartMesh = engine::GLTFLoader::loadMesh("assets/models/kart.glb");
+    engine::RenderMesh* kart = m_assets.createRenderMesh("kart", kartMesh);
+
+    m_objects.push_back(engine::RenderObject {
+        .mesh = kart,
+    });
+}
 
 void Game::update(float dt){
-    const float fps = 1.0f / dt;
-    std::cout << "\rFPS: " << std::fixed << std::setprecision(1) << std::setw(6) << fps << std::flush;
-
     const float speed = 3.0f;
     const float mouseSensitivity = 0.0025f;
     const float maxPitch = glm::radians(89.0f);
@@ -44,5 +45,6 @@ void Game::update(float dt){
 }
 
 void Game::render() {
-    renderer().draw(*m_pyramideRenderMesh, m_pyramideTransform, m_camera);
+    for(const auto& object : m_objects)
+        renderer().draw(*object.mesh, object.transform, m_camera);
 }

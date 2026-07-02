@@ -1,9 +1,9 @@
 #pragma once
 
 #include "../engine/core/Application.hpp"
-#include "../engine/graphics/Mesh.hpp"
-#include "../engine/graphics/RenderMesh.hpp"
-#include <memory>
+#include "../engine/scene/RenderObject.hpp"
+#include "../engine/assets/AssetsManager.hpp"
+#include <vector>
 
 class Game final : public engine::Application {
     public:
@@ -14,8 +14,7 @@ class Game final : public engine::Application {
         void render() override;
 
     private:
-        engine::Mesh m_pyramideMesh;
-        std::unique_ptr<engine::RenderMesh> m_pyramideRenderMesh;
-        engine::Transform m_pyramideTransform;
+        engine::AssetsManager m_assets;
         engine::Camera m_camera;
+        std::vector<engine::RenderObject> m_objects;
 };
