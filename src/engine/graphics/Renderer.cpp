@@ -2,6 +2,7 @@
 #include "Mesh.hpp"
 #include "Shader.hpp"
 #include "Vertex.hpp"
+#include "uniforms/VertexUniforms.hpp"
 #include <cstring>
 #include <limits>
 #include <stdexcept>
@@ -31,6 +32,15 @@ namespace engine {
         pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
         pipeline_info.target_info.num_color_targets = 1;
         pipeline_info.target_info.color_target_descriptions = &color_target_desc;
+        pipeline_info.target_info.has_depth_stencil_target = true;
+        pipeline_info.target_info.depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+
+        pipeline_info.depth_stencil_state.enable_depth_test = true;
+        pipeline_info.depth_stencil_state.enable_depth_write = true;
+        pipeline_info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS;
+
+        pipeline_info.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_BACK;
+        pipeline_info.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
 
         m_pipeline = SDL_CreateGPUGraphicsPipeline(m_device, &pipeline_info);
 
@@ -39,12 +49,18 @@ namespace engine {
     }
 
     Renderer::~Renderer() {
+        if (!m_device)
+            return;
+
         if (m_pipeline) {
             SDL_ReleaseGPUGraphicsPipeline(m_device, m_pipeline);
             m_pipeline = nullptr;
         }
 
-        if (!m_device) return;
+        if (m_depth_texture) {
+            SDL_ReleaseGPUTexture(m_device, m_depth_texture);
+            m_depth_texture = nullptr;
+        }
 
         SDL_ReleaseWindowFromGPUDevice(m_device, m_window.handle());
         SDL_DestroyGPUDevice(m_device);
@@ -52,6 +68,30 @@ namespace engine {
 
     SDL_GPUDevice* Renderer::device() const {
         return m_device;
+    }
+
+    void Renderer::createDepthTexture(Uint32 width, Uint32 height) {
+        if (m_depth_texture) {
+            SDL_ReleaseGPUTexture(m_device, m_depth_texture);
+            m_depth_texture = nullptr;
+        }
+
+        SDL_GPUTextureCreateInfo info{};
+        info.type = SDL_GPU_TEXTURETYPE_2D;
+        info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+        info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
+        info.width = width;
+        info.height = height;
+        info.layer_count_or_depth = 1;
+        info.num_levels = 1;
+        info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+
+        m_depth_texture = SDL_CreateGPUTexture(m_device, &info);
+        if (!m_depth_texture)
+            throw std::runtime_error(std::string("SDL_CreateGPUTexture depth failed: ") + SDL_GetError());
+
+        m_depth_width = width;
+        m_depth_height = height;
     }
 
     RenderMesh Renderer::createRenderMesh(const Mesh& mesh) {
@@ -171,13 +211,18 @@ namespace engine {
         return RenderMesh(m_device, vertexBuffer, indexBuffer, static_cast<std::uint32_t>(indices.size()));
     }
 
-    void Renderer::draw(const RenderMesh& mesh, const Transform& transform) {
+    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera) {
         if (!m_render_pass)
             throw std::logic_error("Renderer::draw called outside an active render pass");
 
-        // Transform matrix
-        const glm::mat4 model = transform.matrix();
-        SDL_PushGPUVertexUniformData(m_command_buffer, 0, &model, sizeof(glm::mat4));
+        float aspect_ration = static_cast<float>(m_window.width()) / static_cast<float>(m_window.height());
+
+        VertexUniforms uniforms{};
+        uniforms.model = transform.matrix();
+        uniforms.view = camera.viewMatrix();
+        uniforms.projection = camera.projectionMatrix(aspect_ration);
+
+        SDL_PushGPUVertexUniformData(m_command_buffer, 0, &uniforms, sizeof(VertexUniforms));
 
         SDL_BindGPUGraphicsPipeline(m_render_pass, m_pipeline);
 
@@ -218,6 +263,9 @@ namespace engine {
             m_command_buffer = nullptr;
             return;
         }
+
+        if (!m_depth_texture || width != m_depth_width || height != m_depth_height)
+            createDepthTexture(width, height);
     }
 
     void Renderer::beginRenderPass() {
@@ -233,7 +281,15 @@ namespace engine {
         color_target.load_op = SDL_GPU_LOADOP_CLEAR;
         color_target.store_op = SDL_GPU_STOREOP_STORE;
 
-        m_render_pass = SDL_BeginGPURenderPass(m_command_buffer, &color_target, 1, nullptr);
+        SDL_GPUDepthStencilTargetInfo depth_target{};
+        depth_target.texture = m_depth_texture;
+        depth_target.clear_depth = 1.0f;
+        depth_target.load_op = SDL_GPU_LOADOP_CLEAR;
+        depth_target.store_op = SDL_GPU_STOREOP_DONT_CARE;
+        depth_target.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE;
+        depth_target.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE;
+
+        m_render_pass = SDL_BeginGPURenderPass(m_command_buffer, &color_target, 1, &depth_target);
 
         if (!m_render_pass) throw std::runtime_error(std::string("SDL_BeginGPURenderPass failed: ") + SDL_GetError());
     }

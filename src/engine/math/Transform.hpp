@@ -11,5 +11,9 @@ namespace engine {
             glm::vec3 scale    { 1.0f, 1.0f, 1.0f };
 
             glm::mat4 matrix() const;
+
+            glm::vec3 forward() const;
+            glm::vec3 right() const;
+            glm::vec3 up() const;
     };
 }

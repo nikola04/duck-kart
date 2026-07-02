@@ -17,6 +17,9 @@ namespace engine {
             while(SDL_PollEvent(&event)) {
                 if (event.type == SDL_EVENT_QUIT)
                     m_running = false;
+
+                if (event.type == SDL_EVENT_WINDOW_RESIZED)
+                    m_window.setSize(event.window.data1, event.window.data2);
             }
 
             auto current_time = SDL_GetTicks();

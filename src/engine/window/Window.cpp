@@ -23,4 +23,17 @@ namespace engine {
     SDL_Window* Window::handle() const {
         return m_window;
     }
+
+    int Window::width() const {
+        return m_width;
+    }
+
+    int Window::height() const {
+        return m_height;
+    }
+
+    void Window::setSize(int width, int height) {
+        m_width = width;
+        m_height = height;
+    }
 }

@@ -19,6 +19,7 @@ add_executable(main
     src/engine/graphics/RenderMesh.cpp
     src/engine/graphics/Shader.cpp
     src/engine/math/Transform.cpp
+    src/engine/scene/Camera.cpp
     src/engine/window/Window.cpp
 
     src/game/Game.cpp

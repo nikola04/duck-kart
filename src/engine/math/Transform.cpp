@@ -14,4 +14,33 @@ namespace engine {
 
         return result;
     }
+
+    glm::vec3 Transform::forward() const {
+        glm::mat4 rot{1.0f};
+
+        rot = glm::rotate(rot, rotation.x, glm::vec3{ 1.0f, 0.0f, 0.0f });
+        rot = glm::rotate(rot, rotation.y, glm::vec3{ 0.0f, 1.0f, 0.0f });
+        rot = glm::rotate(rot, rotation.z, glm::vec3{ 0.0f, 0.0f, 1.0f });
+
+        return glm::normalize(glm::vec3(rot * glm::vec4{ 0.0f, 0.0f, -1.0f, 0.0f }));
+    }
+    glm::vec3 Transform::right() const {
+        glm::mat4 rot{1.0f};
+
+        rot = glm::rotate(rot, rotation.x, glm::vec3{ 1.0f, 0.0f, 0.0f });
+        rot = glm::rotate(rot, rotation.y, glm::vec3{ 0.0f, 1.0f, 0.0f });
+        rot = glm::rotate(rot, rotation.z, glm::vec3{ 0.0f, 0.0f, 1.0f });
+
+        return glm::normalize(glm::vec3(rot * glm::vec4{ 1.0f, 0.0f, 0.0f, 0.0f }));
+    }
+    glm::vec3 Transform::up() const {
+
+        glm::mat4 rot{1.0f};
+
+        rot = glm::rotate(rot, rotation.x, glm::vec3{ 1.0f, 0.0f, 0.0f });
+        rot = glm::rotate(rot, rotation.y, glm::vec3{ 0.0f, 1.0f, 0.0f });
+        rot = glm::rotate(rot, rotation.z, glm::vec3{ 0.0f, 0.0f, 1.0f });
+
+        return glm::normalize(glm::vec3(rot * glm::vec4{ 0.0f, 1.0f, 0.0f, 0.0f }));
+    }
 }

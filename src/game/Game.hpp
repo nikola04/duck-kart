@@ -17,4 +17,5 @@ class Game final : public engine::Application {
         engine::Mesh m_pyramideMesh;
         std::unique_ptr<engine::RenderMesh> m_pyramideRenderMesh;
         engine::Transform m_pyramideTransform;
+        engine::Camera m_camera;
 };
