@@ -39,9 +39,6 @@ namespace engine {
         pipeline_info.depth_stencil_state.enable_depth_write = true;
         pipeline_info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS;
 
-        pipeline_info.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_BACK;
-        pipeline_info.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
-
         m_pipeline = SDL_CreateGPUGraphicsPipeline(m_device, &pipeline_info);
 
         if (!m_pipeline)

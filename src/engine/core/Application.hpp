@@ -3,6 +3,7 @@
 #include "./SDLContext.hpp"
 #include "../window/Window.hpp"
 #include "../graphics/Renderer.hpp"
+#include "Input.hpp"
 
 namespace engine {
     class Application {
@@ -17,11 +18,13 @@ namespace engine {
             virtual void render() {};
 
             Renderer& renderer();
+            Input& input();
 
         private:
             bool m_running = true;
             SDLContext m_context;
             Window m_window;
             Renderer m_renderer;
+            Input m_input;
     };
 }

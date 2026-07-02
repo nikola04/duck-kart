@@ -1,5 +1,7 @@
 #include "Game.hpp"
 #include "meshes/PyramidMesh.hpp"
+#include <iomanip>
+#include <iostream>
 
 Game::Game()
     : engine::Application(),
@@ -18,7 +20,27 @@ Game::Game()
             }
 
 void Game::update(float dt){
-    m_pyramideTransform.rotation.y += dt;
+    const float fps = 1.0f / dt;
+    std::cout << "\rFPS: " << std::fixed << std::setprecision(1) << std::setw(6) << fps << std::flush;
+
+    const float speed = 3.0f;
+    const float mouseSensitivity = 0.0025f;
+    const float maxPitch = glm::radians(89.0f);
+
+    // mouse movement
+    m_camera.transform.rotation.y += input().mouseDeltaX() * mouseSensitivity;
+    m_camera.transform.rotation.x -= input().mouseDeltaY() * mouseSensitivity;
+    m_camera.transform.rotation.x = std::clamp(m_camera.transform.rotation.x, -maxPitch, maxPitch);
+
+    // keyboard movement
+    if (input().isKeyDown(SDL_SCANCODE_W))
+        m_camera.transform.position += m_camera.transform.forward() * speed * dt;
+    if (input().isKeyDown(SDL_SCANCODE_S))
+        m_camera.transform.position -= m_camera.transform.forward() * speed * dt;
+    if (input().isKeyDown(SDL_SCANCODE_A))
+        m_camera.transform.position -= m_camera.transform.right() * speed * dt;
+    if (input().isKeyDown(SDL_SCANCODE_D))
+        m_camera.transform.position += m_camera.transform.right() * speed * dt;
 }
 
 void Game::render() {

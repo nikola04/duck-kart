@@ -14,6 +14,8 @@ namespace engine {
 
         if (!m_window)
             throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
+
+        setRelativeMouseMode(true);
     }
 
     Window::~Window() {
@@ -35,5 +37,9 @@ namespace engine {
     void Window::setSize(int width, int height) {
         m_width = width;
         m_height = height;
+    }
+
+    void Window::setRelativeMouseMode(bool enabled) {
+        SDL_SetWindowRelativeMouseMode(m_window, enabled);
     }
 }

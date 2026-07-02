@@ -29,6 +29,7 @@ namespace engine {
             int height() const;
 
             void setSize(int width, int height);
+            void setRelativeMouseMode(bool enabled);
 
         private:
             SDL_Window* m_window = nullptr;

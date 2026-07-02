@@ -6,15 +6,18 @@ namespace engine {
         .title = "Duck Karts",
         .width = 1280,
         .height = 720
-    }), m_renderer(m_window) {}
+    }), m_renderer(m_window), m_input() {}
 
     int Application::run() {
         auto previous_time = SDL_GetTicks();
 
         while(m_running) {
             SDL_Event event;
+            m_input.beginFrame();
 
             while(SDL_PollEvent(&event)) {
+                m_input.handleEvent(event);
+
                 if (event.type == SDL_EVENT_QUIT)
                     m_running = false;
 
@@ -40,5 +43,9 @@ namespace engine {
 
     Renderer& Application::renderer() {
         return m_renderer;
+    }
+
+    Input& Application::input() {
+        return m_input;
     }
 }

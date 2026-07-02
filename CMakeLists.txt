@@ -14,6 +14,7 @@ add_executable(main
 
     src/engine/core/Application.cpp
     src/engine/core/SDLContext.cpp
+    src/engine/core/Input.cpp
     src/engine/graphics/Renderer.cpp
     src/engine/graphics/Mesh.cpp
     src/engine/graphics/RenderMesh.cpp

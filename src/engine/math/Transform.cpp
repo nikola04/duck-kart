@@ -16,31 +16,22 @@ namespace engine {
     }
 
     glm::vec3 Transform::forward() const {
-        glm::mat4 rot{1.0f};
+        const float pitch = rotation.x;
+        const float yaw = rotation.y;
 
-        rot = glm::rotate(rot, rotation.x, glm::vec3{ 1.0f, 0.0f, 0.0f });
-        rot = glm::rotate(rot, rotation.y, glm::vec3{ 0.0f, 1.0f, 0.0f });
-        rot = glm::rotate(rot, rotation.z, glm::vec3{ 0.0f, 0.0f, 1.0f });
+        glm::vec3 direction;
+        direction.x = std::sin(yaw) * std::cos(pitch);
+        direction.y = std::sin(pitch);
+        direction.z = -std::cos(yaw) * std::cos(pitch);
 
-        return glm::normalize(glm::vec3(rot * glm::vec4{ 0.0f, 0.0f, -1.0f, 0.0f }));
+        return glm::normalize(direction);
     }
+
     glm::vec3 Transform::right() const {
-        glm::mat4 rot{1.0f};
-
-        rot = glm::rotate(rot, rotation.x, glm::vec3{ 1.0f, 0.0f, 0.0f });
-        rot = glm::rotate(rot, rotation.y, glm::vec3{ 0.0f, 1.0f, 0.0f });
-        rot = glm::rotate(rot, rotation.z, glm::vec3{ 0.0f, 0.0f, 1.0f });
-
-        return glm::normalize(glm::vec3(rot * glm::vec4{ 1.0f, 0.0f, 0.0f, 0.0f }));
+        return glm::normalize(glm::cross(forward(), glm::vec3{0.0f, 1.0f, 0.0f}));
     }
+
     glm::vec3 Transform::up() const {
-
-        glm::mat4 rot{1.0f};
-
-        rot = glm::rotate(rot, rotation.x, glm::vec3{ 1.0f, 0.0f, 0.0f });
-        rot = glm::rotate(rot, rotation.y, glm::vec3{ 0.0f, 1.0f, 0.0f });
-        rot = glm::rotate(rot, rotation.z, glm::vec3{ 0.0f, 0.0f, 1.0f });
-
-        return glm::normalize(glm::vec3(rot * glm::vec4{ 0.0f, 1.0f, 0.0f, 0.0f }));
+        return glm::normalize(glm::cross(right(), forward()));
     }
 }
