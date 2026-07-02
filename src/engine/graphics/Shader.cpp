@@ -36,9 +36,11 @@ namespace engine {
         switch (stage) {
             case engine::ShaderStage::Vertex:
                 info.stage = SDL_GPU_SHADERSTAGE_VERTEX;
+                info.num_uniform_buffers = 1;
                 break;
             case engine::ShaderStage::Fragment:
                 info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
+                info.num_uniform_buffers = 0;
                 break;
         }
 

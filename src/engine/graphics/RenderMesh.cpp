@@ -11,8 +11,7 @@ namespace engine {
           m_vertexBuffer(vertexBuffer),
           m_indexBuffer(indexBuffer),
           m_indexCount(indexCount)
-    {
-    }
+    {}
 
     RenderMesh::~RenderMesh() {
         if (m_vertexBuffer)

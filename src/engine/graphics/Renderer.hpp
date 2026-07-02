@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include "../window/Window.hpp"
+#include "../math/Transform.hpp"
 #include "Mesh.hpp"
 #include "RenderMesh.hpp"
 
@@ -19,7 +20,7 @@ namespace engine {
             RenderMesh createRenderMesh(const Mesh& mesh);
 
             void beginRenderPass();
-            void draw(const RenderMesh& mesh);
+            void draw(const RenderMesh& mesh, const Transform& transform);
             void endRenderPass();
 
             void beginFrame();

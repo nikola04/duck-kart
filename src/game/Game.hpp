@@ -14,6 +14,7 @@ class Game final : public engine::Application {
         void render() override;
 
     private:
-        engine::Mesh m_triangleMesh;
-        std::unique_ptr<engine::RenderMesh> m_triangleRenderMesh;
+        engine::Mesh m_pyramideMesh;
+        std::unique_ptr<engine::RenderMesh> m_pyramideRenderMesh;
+        engine::Transform m_pyramideTransform;
 };

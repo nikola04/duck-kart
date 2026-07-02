@@ -3,5 +3,5 @@
 #include "../../engine/graphics/Mesh.hpp"
 
 namespace game {
-    engine::Mesh createTriangleMesh();
+    engine::Mesh createPyramidMesh();
 }

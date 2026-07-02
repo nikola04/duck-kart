@@ -2,10 +2,12 @@
 
 #include "VertexLayout.hpp"
 #include <cstddef>
+#include <glm/glm.hpp>
+
 namespace engine {
     struct Vertex {
-        float x, y, z;
-        float r, g, b;
+        glm::vec3 position;
+        glm::vec3 color;
     };
 
     template<>
@@ -22,12 +24,12 @@ namespace engine {
             attributes[0].location = 0;
             attributes[0].buffer_slot = 0;
             attributes[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
-            attributes[0].offset = offsetof(Vertex, x);
+            attributes[0].offset = offsetof(Vertex, position);
 
             attributes[1].location = 1;
             attributes[1].buffer_slot = 0;
             attributes[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
-            attributes[1].offset = offsetof(Vertex, r);
+            attributes[1].offset = offsetof(Vertex, color);
 
             SDL_GPUVertexInputState state{};
             state.vertex_buffer_descriptions = &buffer_desc;

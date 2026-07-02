@@ -75,8 +75,7 @@ namespace engine {
         vertexBufferInfo.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
         vertexBufferInfo.size = vertexBufferSize;
 
-        SDL_GPUBuffer* vertexBuffer =
-            SDL_CreateGPUBuffer(m_device, &vertexBufferInfo);
+        SDL_GPUBuffer* vertexBuffer = SDL_CreateGPUBuffer(m_device, &vertexBufferInfo);
 
         if (!vertexBuffer)
             throw std::runtime_error(std::string("Failed to create vertex buffer: ") + SDL_GetError());
@@ -85,8 +84,7 @@ namespace engine {
         indexBufferInfo.usage = SDL_GPU_BUFFERUSAGE_INDEX;
         indexBufferInfo.size = indexBufferSize;
 
-        SDL_GPUBuffer* indexBuffer =
-            SDL_CreateGPUBuffer(m_device, &indexBufferInfo);
+        SDL_GPUBuffer* indexBuffer = SDL_CreateGPUBuffer(m_device, &indexBufferInfo);
 
         if (!indexBuffer) {
             SDL_ReleaseGPUBuffer(m_device, vertexBuffer);
@@ -97,8 +95,7 @@ namespace engine {
         transferInfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
         transferInfo.size = vertexBufferSize + indexBufferSize;
 
-        SDL_GPUTransferBuffer* transferBuffer =
-            SDL_CreateGPUTransferBuffer(m_device, &transferInfo);
+        SDL_GPUTransferBuffer* transferBuffer = SDL_CreateGPUTransferBuffer(m_device, &transferInfo);
 
         if (!transferBuffer) {
             SDL_ReleaseGPUBuffer(m_device, indexBuffer);
@@ -116,16 +113,11 @@ namespace engine {
         }
 
         std::memcpy(mapped, vertices.data(), vertexBufferSize);
-        std::memcpy(
-            static_cast<char*>(mapped) + vertexBufferSize,
-            indices.data(),
-            indexBufferSize
-        );
+        std::memcpy(static_cast<char*>(mapped) + vertexBufferSize, indices.data(), indexBufferSize);
 
         SDL_UnmapGPUTransferBuffer(m_device, transferBuffer);
 
-        SDL_GPUCommandBuffer* commandBuffer =
-            SDL_AcquireGPUCommandBuffer(m_device);
+        SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(m_device);
 
         if (!commandBuffer) {
             SDL_ReleaseGPUTransferBuffer(m_device, transferBuffer);
@@ -134,8 +126,7 @@ namespace engine {
             throw std::runtime_error(std::string("Failed to acquire upload command buffer: ") + SDL_GetError());
         }
 
-        SDL_GPUCopyPass* copyPass =
-            SDL_BeginGPUCopyPass(commandBuffer);
+        SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(commandBuffer);
 
         if (!copyPass) {
             SDL_CancelGPUCommandBuffer(commandBuffer);
@@ -177,26 +168,27 @@ namespace engine {
 
         SDL_ReleaseGPUTransferBuffer(m_device, transferBuffer);
 
-        return RenderMesh(
-            m_device,
-            vertexBuffer,
-            indexBuffer,
-            static_cast<std::uint32_t>(indices.size())
-        );
+        return RenderMesh(m_device, vertexBuffer, indexBuffer, static_cast<std::uint32_t>(indices.size()));
     }
 
-    void Renderer::draw(const RenderMesh& mesh) {
+    void Renderer::draw(const RenderMesh& mesh, const Transform& transform) {
         if (!m_render_pass)
             throw std::logic_error("Renderer::draw called outside an active render pass");
 
+        // Transform matrix
+        const glm::mat4 model = transform.matrix();
+        SDL_PushGPUVertexUniformData(m_command_buffer, 0, &model, sizeof(glm::mat4));
+
         SDL_BindGPUGraphicsPipeline(m_render_pass, m_pipeline);
 
+        // Vertex buffer
         SDL_GPUBufferBinding vertex_binding{};
         vertex_binding.buffer = mesh.vertexBuffer();
         vertex_binding.offset = 0;
 
         SDL_BindGPUVertexBuffers(m_render_pass, 0, &vertex_binding, 1);
 
+        // Index buffer
         SDL_GPUBufferBinding index_binding{};
         index_binding.buffer = mesh.indexBuffer();
         index_binding.offset = 0;
