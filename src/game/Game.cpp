@@ -31,10 +31,14 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_camera(), m_objects
 
         const engine::Texture* texture = nullptr;
         glm::vec4 baseColor{1.0f};
+        float metallic = 0.0f;
+        float roughness = 1.0f;
 
         if (loadedMesh.material >= 0) {
             const auto& material = kartModel.materials[loadedMesh.material];
             baseColor = glm::vec4(material.baseColor, 1.0f);
+            metallic = material.metallic;
+            roughness = material.roughness;
 
             if (material.baseColorTexture >= 0) {
                 texture = m_textures[material.baseColorTexture].get();
@@ -48,7 +52,9 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_camera(), m_objects
             .mesh = renderMesh,
             .texture = texture,
             .baseColor = baseColor,
-            .transform = transform
+            .metallic = metallic,
+            .roughness = roughness,
+            .transform = transform,
         });
     }
 }
@@ -81,5 +87,5 @@ void Game::update(float dt){
 
 void Game::render() {
     for(const auto& object : m_objects)
-        renderer().draw(*object.mesh, object.transform, m_camera, object.texture, object.baseColor);
+        renderer().draw(*object.mesh, object.transform, m_camera, object.texture, object.baseColor, object.metallic, object.roughness);
 }

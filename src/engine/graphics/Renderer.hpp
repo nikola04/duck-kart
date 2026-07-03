@@ -31,8 +31,10 @@ namespace engine {
                 const RenderMesh& mesh,
                 const Transform& transform,
                 const Camera& camera,
-                const Texture* texture = nullptr,
-                const glm::vec4& base_color = {1.0f, 1.0f, 1.0f, 1.0f}
+                const Texture* texture,
+                const glm::vec4& base_color,
+                float metallic,
+                float roughness
             );
             void endRenderPass();
 

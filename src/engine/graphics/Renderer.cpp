@@ -3,6 +3,7 @@
 #include "Shader.hpp"
 #include "Texture.hpp"
 #include "Vertex.hpp"
+#include "uniforms/CameraUniforms.hpp"
 #include "uniforms/LightUniforms.hpp"
 #include "uniforms/MaterialUniforms.hpp"
 #include "uniforms/VertexUniforms.hpp"
@@ -297,7 +298,7 @@ namespace engine {
         return RenderMesh(m_device, vertexBuffer, indexBuffer, static_cast<std::uint32_t>(indices.size()));
     }
 
-    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Texture* texture, const glm::vec4& base_color) {
+    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Texture* texture, const glm::vec4& base_color, float metallic, float roughness) {
         if (!m_render_pass)
             throw std::logic_error("Renderer::draw called outside an active render pass");
 
@@ -311,11 +312,16 @@ namespace engine {
 
         MaterialUniforms material_uniforms{};
         material_uniforms.base_color = base_color;
+        material_uniforms.properties = { metallic, roughness, 0.0f, 0.0f };
         SDL_PushGPUFragmentUniformData(m_command_buffer, 0, &material_uniforms, sizeof(MaterialUniforms));
 
         LightUniforms light_uniforms{};
         light_uniforms.direction = glm::vec4(glm::normalize(glm::vec3{-0.4f, -1.0f, -0.3f}), 0.0f);
         SDL_PushGPUFragmentUniformData(m_command_buffer, 1, &light_uniforms, sizeof(LightUniforms));
+
+        CameraUniforms camera_uniforms{};
+        camera_uniforms.position = glm::vec4{camera.transform.position, 1.0f};
+        SDL_PushGPUFragmentUniformData(m_command_buffer, 2, &camera_uniforms, sizeof(CameraUniforms));
 
         SDL_BindGPUGraphicsPipeline(m_render_pass, m_pipeline);
 

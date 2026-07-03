@@ -11,6 +11,7 @@ struct VertexInput
 struct VertexOutput
 {
     float4 position [[position]];
+    float3 worldPosition;
     float3 normal;
     float2 uv;
 };
@@ -29,14 +30,17 @@ vertex VertexOutput main0(
 {
     VertexOutput output;
 
+    float4 worldPosition =
+        uniforms.model * float4(input.position, 1.0);
+
     output.position =
         uniforms.projection *
         uniforms.view *
-        uniforms.model *
-        float4(input.position, 1.0);
+        worldPosition;
 
+    output.worldPosition = worldPosition.xyz;
     output.normal = input.normal;
-    output.uv     = input.uv;
+    output.uv = input.uv;
 
     return output;
 }

@@ -201,6 +201,15 @@ namespace engine {
             static_cast<float>(color[1]),
             static_cast<float>(color[2])
         };
+        result.metallic = static_cast<float>(pbr.metallicFactor);
+        result.roughness = static_cast<float>(pbr.roughnessFactor);
+
+        std::cout
+            << "metallic="
+            << result.metallic
+            << " roughness="
+            << result.roughness
+            << '\n';
 
         if (pbr.baseColorTexture.index >= 0) {
             const auto& gltfTexture = model.textures[pbr.baseColorTexture.index];

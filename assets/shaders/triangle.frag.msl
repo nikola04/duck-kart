@@ -4,6 +4,7 @@ using namespace metal;
 struct FragmentInput
 {
     float4 position [[position]];
+    float3 worldPosition;
     float3 normal;
     float2 uv;
 };
@@ -11,6 +12,7 @@ struct FragmentInput
 struct MaterialUniforms
 {
     float4 baseColor;
+    float4 properties;
 };
 
 struct LightUniforms
@@ -20,29 +22,47 @@ struct LightUniforms
     float4 ambient;
 };
 
+struct CameraUniforms
+{
+    float4 position;
+};
+
 fragment float4 main0(
     FragmentInput input [[stage_in]],
     constant MaterialUniforms& material [[buffer(0)]],
     constant LightUniforms& light [[buffer(1)]],
+    constant CameraUniforms& camera [[buffer(2)]],
     texture2d<float> baseTexture [[texture(0)]],
     sampler baseSampler [[sampler(0)]]
 )
 {
     float3 normal = normalize(input.normal);
-
     float3 lightDir = normalize(-light.direction.xyz);
+    float3 viewDir = normalize(camera.position.xyz - input.worldPosition);
 
     float diffuse = max(dot(normal, lightDir), 0.0);
 
-    float4 texColor = baseTexture.sample(baseSampler, input.uv);
+    float metallic = material.properties.x;
+    float roughness = clamp(material.properties.y, 0.05, 1.0);
 
+    float3 halfDir = normalize(lightDir + viewDir);
+
+    float shininess = mix(128.0, 8.0, roughness);
+
+    float specularStrength = mix(0.08, 0.9, metallic);
+
+    float specular = pow(
+        max(dot(normal, halfDir), 0.0),
+        shininess
+    ) * specularStrength;
+
+    float4 texColor = baseTexture.sample(baseSampler, input.uv);
     float3 baseColor = texColor.rgb * material.baseColor.rgb;
 
     float3 finalColor =
         baseColor * light.ambient.rgb +
-        baseColor * light.color.rgb * diffuse;
-
-    finalColor = pow(finalColor, float3(1.0 / 2.2));
+        baseColor * light.color.rgb * diffuse +
+        light.color.rgb * specular;
 
     return float4(finalColor, texColor.a * material.baseColor.a);
 }
