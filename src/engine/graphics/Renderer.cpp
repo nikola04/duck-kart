@@ -3,11 +3,14 @@
 #include "Shader.hpp"
 #include "Texture.hpp"
 #include "Vertex.hpp"
+#include "uniforms/LightUniforms.hpp"
 #include "uniforms/MaterialUniforms.hpp"
 #include "uniforms/VertexUniforms.hpp"
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_stdinc.h>
 #include <cstring>
+#include <glm/fwd.hpp>
+#include <glm/geometric.hpp>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -309,6 +312,10 @@ namespace engine {
         MaterialUniforms material_uniforms{};
         material_uniforms.base_color = base_color;
         SDL_PushGPUFragmentUniformData(m_command_buffer, 0, &material_uniforms, sizeof(MaterialUniforms));
+
+        LightUniforms light_uniforms{};
+        light_uniforms.direction = glm::vec4(glm::normalize(glm::vec3{-0.4f, -1.0f, -0.3f}), 0.0f);
+        SDL_PushGPUFragmentUniformData(m_command_buffer, 1, &light_uniforms, sizeof(LightUniforms));
 
         SDL_BindGPUGraphicsPipeline(m_render_pass, m_pipeline);
 

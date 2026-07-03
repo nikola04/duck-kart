@@ -13,14 +13,36 @@ struct MaterialUniforms
     float4 baseColor;
 };
 
+struct LightUniforms
+{
+    float4 direction;
+    float4 color;
+    float4 ambient;
+};
+
 fragment float4 main0(
     FragmentInput input [[stage_in]],
     constant MaterialUniforms& material [[buffer(0)]],
+    constant LightUniforms& light [[buffer(1)]],
     texture2d<float> baseTexture [[texture(0)]],
     sampler baseSampler [[sampler(0)]]
 )
 {
+    float3 normal = normalize(input.normal);
+
+    float3 lightDir = normalize(-light.direction.xyz);
+
+    float diffuse = max(dot(normal, lightDir), 0.0);
+
     float4 texColor = baseTexture.sample(baseSampler, input.uv);
 
-    return texColor * material.baseColor;
+    float3 baseColor = texColor.rgb * material.baseColor.rgb;
+
+    float3 finalColor =
+        baseColor * light.ambient.rgb +
+        baseColor * light.color.rgb * diffuse;
+
+    finalColor = pow(finalColor, float3(1.0 / 2.2));
+
+    return float4(finalColor, texColor.a * material.baseColor.a);
 }
