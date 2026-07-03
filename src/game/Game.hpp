@@ -3,6 +3,7 @@
 #include "../engine/core/Application.hpp"
 #include "../engine/scene/RenderObject.hpp"
 #include "../engine/assets/AssetsManager.hpp"
+#include <memory>
 #include <vector>
 
 class Game final : public engine::Application {
@@ -17,4 +18,5 @@ class Game final : public engine::Application {
         engine::AssetsManager m_assets;
         engine::Camera m_camera;
         std::vector<engine::RenderObject> m_objects;
+        std::vector<std::unique_ptr<engine::Texture>> m_textures;
 };

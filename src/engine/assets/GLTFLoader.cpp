@@ -1,5 +1,6 @@
 #include "GLTFLoader.hpp"
 
+#include <glm/fwd.hpp>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -21,6 +22,16 @@ namespace engine {
             + bufferView.byteOffset
             + accessor.byteOffset;
     }
+
+    static const tinygltf::Accessor* findAccessor(const tinygltf::Model& model, const tinygltf::Primitive& primitive, const std::string& name) {
+        auto it = primitive.attributes.find(name);
+
+        if (it == primitive.attributes.end())
+            return nullptr;
+
+        return &model.accessors[it->second];
+    }
+
     static std::vector<Vertex> loadVertices(
         const tinygltf::Model& model,
         const tinygltf::Primitive& primitive,
@@ -28,9 +39,20 @@ namespace engine {
         const glm::vec3& color
     ) {
         auto positionIt = primitive.attributes.find("POSITION");
-
         if (positionIt == primitive.attributes.end())
             throw std::runtime_error("GLB primitive has no POSITION attribute");
+
+        const tinygltf::Accessor* normalAccessor = findAccessor(model, primitive, "NORMAL");
+        const tinygltf::Accessor* uvAccessor = findAccessor(model, primitive, "TEXCOORD_0");
+
+        const float* normals = nullptr;
+        const float* uvs = nullptr;
+
+        if (normalAccessor)
+            normals = reinterpret_cast<const float*>(accessorData(model, *normalAccessor));
+
+        if (uvAccessor)
+            uvs = reinterpret_cast<const float*>(accessorData(model, *uvAccessor));
 
         const tinygltf::Accessor& positionAccessor = model.accessors[positionIt->second];
 
@@ -39,16 +61,35 @@ namespace engine {
 
         const float* positions = reinterpret_cast<const float*>(accessorData(model, positionAccessor));
 
+        const glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transform)));
+
         std::vector<Vertex> vertices;
         vertices.reserve(positionAccessor.count);
 
         for (std::size_t i = 0; i < positionAccessor.count; ++i) {
             const float x = positions[i * 3 + 0], y = positions[i * 3 + 1], z = positions[i * 3 + 2];
             glm::vec4 worldPos = transform * glm::vec4{x, y, z, 1.0f};
+            glm::vec3 normal{ 0.0f, 1.0f, 0.0f };
+            glm::vec2 uv{ 0.0f, 0.0f };
+
+            if (normals) {
+                normal = {
+                    normals[i * 3 + 0],
+                    normals[i * 3 + 1],
+                    normals[i * 3 + 2]
+                };
+
+                normal = glm::normalize(normalMatrix * normal);
+            }
+
+            if (uvs)
+                uv = { uvs[i * 2 + 0], uvs[i * 2 + 1]};
 
             vertices.push_back(Vertex{
                 .position = {worldPos.x, worldPos.y, worldPos.z},
-                .color = color
+                .normal = normal,
+                .color = color,
+                .uv = uv
             });
         }
 
@@ -97,13 +138,13 @@ namespace engine {
         const tinygltf::Primitive& primitive
     ) {
         if (primitive.material < 0)
-            return {1.0f, 0.7f, 0.2f};
+            return {1.0f, 1.0f, 1.0f};
 
         const auto& material = model.materials[primitive.material];
         const auto& baseColor = material.pbrMetallicRoughness.baseColorFactor;
 
         if (baseColor.size() < 3)
-            return {1.0f, 0.7f, 0.2f};
+            return {1.0f, 1.0f, 1.0f};
 
         return {
             static_cast<float>(baseColor[0]),
@@ -148,13 +189,51 @@ namespace engine {
         return result;
     }
 
-    static void processNode(
-        const tinygltf::Model& model,
-        int nodeIndex,
-        const glm::mat4& parentTransform,
-        std::vector<Vertex>& vertices,
-        std::vector<std::uint32_t>& indices
-    ) {
+    static LoadedTexture loadTexture(const tinygltf::Image& image) {
+        LoadedTexture texture{};
+        texture.width = static_cast<std::uint32_t>(image.width);
+        texture.height = static_cast<std::uint32_t>(image.height);
+
+        const int components = image.component;
+        const auto& src = image.image;
+
+        if (components < 3)
+            throw std::runtime_error("Unsupported texture format");
+
+        texture.pixels.resize(texture.width * texture.height * 4);
+
+        for (std::size_t i = 0; i < texture.width * texture.height; ++i) {
+            texture.pixels[i * 4 + 0] = src[i * components + 0];
+            texture.pixels[i * 4 + 1] = src[i * components + 1];
+            texture.pixels[i * 4 + 2] = src[i * components + 2];
+            texture.pixels[i * 4 + 3] = components >= 4 ? src[i * components + 3] : 255;
+        }
+
+        return texture;
+    }
+
+    static LoadedMaterial loadMaterial(const tinygltf::Model& model, const tinygltf::Material& material) {
+        LoadedMaterial result{};
+
+        const auto& pbr = material.pbrMetallicRoughness;
+        const auto& color = pbr.baseColorFactor;
+
+        result.baseColor = {
+            static_cast<float>(color[0]),
+            static_cast<float>(color[1]),
+            static_cast<float>(color[2])
+        };
+
+        if (pbr.baseColorTexture.index >= 0) {
+            const auto& gltfTexture = model.textures[pbr.baseColorTexture.index];
+
+            result.baseColorTexture = gltfTexture.source;
+        }
+
+        return result;
+    }
+
+    static void processNode(const tinygltf::Model& model, int nodeIndex, const glm::mat4& parentTransform, LoadedModel& loadedModel) {
         const tinygltf::Node& node = model.nodes[nodeIndex];
         glm::mat4 globalTransform = parentTransform * nodeMatrix(node);
 
@@ -162,29 +241,25 @@ namespace engine {
             const tinygltf::Mesh& mesh = model.meshes[node.mesh];
 
             for (const auto& primitive : mesh.primitives) {
-                std::uint32_t vertexOffset = static_cast<std::uint32_t>(vertices.size());
-
                 const glm::vec3 color = primitiveColor(model, primitive);
-                auto primitiveVertices = loadVertices(model, primitive, globalTransform, color);
 
-                auto primitiveIndices = loadIndices(model, primitive);
+                LoadedMesh loadedMesh{
+                    .mesh = Mesh{
+                        loadVertices(model, primitive, globalTransform, color),
+                        loadIndices(model, primitive)
+                    },
+                    .material = primitive.material >= 0 ? primitive.material + 1 : 0
+                };
 
-                vertices.insert(
-                    vertices.end(),
-                    primitiveVertices.begin(),
-                    primitiveVertices.end()
-                );
-
-                for (std::uint32_t index : primitiveIndices)
-                    indices.push_back(vertexOffset + index);
+                loadedModel.meshes.push_back(std::move(loadedMesh));
             }
         }
 
         for (int child : node.children)
-            processNode(model, child, globalTransform, vertices, indices);
+            processNode(model, child, globalTransform, loadedModel);
     }
 
-    Mesh GLTFLoader::loadMesh(const std::filesystem::path& path) {
+    LoadedModel GLTFLoader::loadModel(const std::filesystem::path& path) {
         tinygltf::TinyGLTF loader;
         tinygltf::Model model;
 
@@ -201,18 +276,24 @@ namespace engine {
         if (model.meshes.empty())
             throw std::runtime_error("GLB file has no meshes: " + path.string());
 
-        std::vector<Vertex> vertices;
-        std::vector<std::uint32_t> indices;
+        LoadedModel loadedModel;
+        loadedModel.materials.push_back(LoadedMaterial{
+            .baseColor = {1.0f, 1.0f, 1.0f},
+            .baseColorTexture = -1
+        });
 
         int sceneIndex = model.defaultScene >= 0 ? model.defaultScene : 0;
         const tinygltf::Scene& scene = model.scenes[sceneIndex];
 
-        for (int nodeIndex : scene.nodes)
-            processNode(model, nodeIndex, glm::mat4{1.0f}, vertices, indices);
+        for (const auto& image : model.images)
+            loadedModel.textures.push_back(loadTexture(image));
 
-        return Mesh{
-            std::move(vertices),
-            std::move(indices)
-        };
+        for (const auto& material : model.materials)
+            loadedModel.materials.push_back(loadMaterial(model, material));
+
+        for (int nodeIndex : scene.nodes)
+            processNode(model, nodeIndex, glm::mat4{1.0f}, loadedModel);
+
+        return loadedModel;
     }
 }

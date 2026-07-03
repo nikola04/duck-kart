@@ -1,20 +1,24 @@
 #pragma once
 
 #include "VertexLayout.hpp"
+#include <SDL3/SDL_gpu.h>
 #include <cstddef>
+#include <glm/fwd.hpp>
 #include <glm/glm.hpp>
 
 namespace engine {
     struct Vertex {
         glm::vec3 position;
+        glm::vec3 normal;
         glm::vec3 color;
+        glm::vec2 uv;
     };
 
     template<>
     struct VertexLayout<Vertex> {
         static SDL_GPUVertexInputState create() {
             static SDL_GPUVertexBufferDescription buffer_desc{};
-            static SDL_GPUVertexAttribute attributes[2]{};
+            static SDL_GPUVertexAttribute attributes[4]{};
 
             buffer_desc.slot = 0;
             buffer_desc.pitch = sizeof(Vertex);
@@ -29,13 +33,23 @@ namespace engine {
             attributes[1].location = 1;
             attributes[1].buffer_slot = 0;
             attributes[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
-            attributes[1].offset = offsetof(Vertex, color);
+            attributes[1].offset = offsetof(Vertex, normal);
+
+            attributes[2].location = 2;
+            attributes[2].buffer_slot = 0;
+            attributes[2].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
+            attributes[2].offset = offsetof(Vertex, color);
+
+            attributes[3].location = 3;
+            attributes[3].buffer_slot = 0;
+            attributes[3].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+            attributes[3].offset = offsetof(Vertex, uv);
 
             SDL_GPUVertexInputState state{};
             state.vertex_buffer_descriptions = &buffer_desc;
             state.num_vertex_buffers = 1;
             state.vertex_attributes = attributes;
-            state.num_vertex_attributes = 2;
+            state.num_vertex_attributes = 4;
 
             return state;
         }

@@ -1,8 +1,11 @@
 #include "Renderer.hpp"
 #include "Mesh.hpp"
 #include "Shader.hpp"
+#include "Texture.hpp"
 #include "Vertex.hpp"
 #include "uniforms/VertexUniforms.hpp"
+#include <SDL3/SDL_gpu.h>
+#include <SDL3/SDL_stdinc.h>
 #include <cstring>
 #include <limits>
 #include <stdexcept>
@@ -43,6 +46,22 @@ namespace engine {
 
         if (!m_pipeline)
             throw std::runtime_error(std::string("SDL_CreateGPUGraphicsPipeline failed: ") + SDL_GetError());
+
+        SDL_GPUSamplerCreateInfo sampler_info{};
+        sampler_info.min_filter = SDL_GPU_FILTER_LINEAR;
+        sampler_info.mag_filter = SDL_GPU_FILTER_LINEAR;
+        sampler_info.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR;
+
+        sampler_info.address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
+        sampler_info.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
+        sampler_info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
+
+        m_default_sampler = SDL_CreateGPUSampler(m_device, &sampler_info);
+        if (!m_default_sampler)
+            throw std::runtime_error(std::string("SDL_CreateGPUSampler failed: ") + SDL_GetError());
+
+        const std::uint8_t whitePixel[4] = { 255, 255, 255, 255 };
+        m_white_texture = std::make_unique<Texture>(createTexture(whitePixel, 1, 1));
     }
 
     Renderer::~Renderer() {
@@ -59,12 +78,74 @@ namespace engine {
             m_depth_texture = nullptr;
         }
 
+        if (m_default_sampler){
+            SDL_ReleaseGPUSampler(m_device, m_default_sampler);
+            m_default_sampler = nullptr;
+        }
+
         SDL_ReleaseWindowFromGPUDevice(m_device, m_window.handle());
         SDL_DestroyGPUDevice(m_device);
     }
 
     SDL_GPUDevice* Renderer::device() const {
         return m_device;
+    }
+
+    SDL_GPUSampler* Renderer::defaultSampler() const {
+        return m_default_sampler;
+    }
+
+    Texture Renderer::createTexture(const void* pixels, Uint32 width, Uint32 height) {
+        const Uint32 bytes_per_pixel = 4, upload_size = width * height * bytes_per_pixel;
+
+        SDL_GPUTextureCreateInfo info{};
+        info.type = SDL_GPU_TEXTURETYPE_2D;
+        info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+        info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+        info.width = width;
+        info.height = height;
+        info.layer_count_or_depth = 1;
+        info.num_levels = 1;
+        info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+
+        SDL_GPUTexture* texture = SDL_CreateGPUTexture(m_device, &info);
+        if (!texture)
+            throw std::runtime_error(std::string("SDL_CreateGPUTexture failed: ") + SDL_GetError());
+
+        SDL_GPUTransferBufferCreateInfo transfer_info{};
+        transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+        transfer_info.size = upload_size;
+
+        SDL_GPUTransferBuffer* transfer_buffer = SDL_CreateGPUTransferBuffer(m_device, &transfer_info);
+        if (!transfer_buffer)
+            throw std::runtime_error(std::string("SDL_CreateGPUTransferBuffer texture failed: ") + SDL_GetError());
+
+        void* mapped = SDL_MapGPUTransferBuffer(m_device, transfer_buffer, false);
+        std::memcpy(mapped, pixels, upload_size);
+        SDL_UnmapGPUTransferBuffer(m_device, transfer_buffer);
+
+        SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(m_device);
+        SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(command_buffer);
+
+        SDL_GPUTextureTransferInfo source{};
+        source.transfer_buffer = transfer_buffer;
+        source.offset = 0;
+        source.pixels_per_row = width;
+        source.rows_per_layer = height;
+
+        SDL_GPUTextureRegion destination{};
+        destination.texture = texture;
+        destination.w = width;
+        destination.h = height;
+        destination.d = 1;
+
+        SDL_UploadToGPUTexture(copy_pass, &source, &destination, false);
+
+        SDL_EndGPUCopyPass(copy_pass);
+        SDL_SubmitGPUCommandBuffer(command_buffer);
+
+        SDL_ReleaseGPUTransferBuffer(m_device, transfer_buffer);
+        return Texture{ m_device, texture, width, height };
     }
 
     void Renderer::createDepthTexture(Uint32 width, Uint32 height) {
@@ -208,7 +289,7 @@ namespace engine {
         return RenderMesh(m_device, vertexBuffer, indexBuffer, static_cast<std::uint32_t>(indices.size()));
     }
 
-    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera) {
+    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Texture* texture) {
         if (!m_render_pass)
             throw std::logic_error("Renderer::draw called outside an active render pass");
 
@@ -236,6 +317,14 @@ namespace engine {
         index_binding.offset = 0;
 
         SDL_BindGPUIndexBuffer(m_render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+
+        const Texture* texture_to_bind = texture ? texture : m_white_texture.get();
+
+        SDL_GPUTextureSamplerBinding binding{};
+        binding.texture = texture_to_bind->handle();
+        binding.sampler = m_default_sampler;
+
+        SDL_BindGPUFragmentSamplers(m_render_pass, 0, &binding, 1);
 
         SDL_DrawGPUIndexedPrimitives(m_render_pass, mesh.indexCount(), 1, 0, 0, 0);
     }

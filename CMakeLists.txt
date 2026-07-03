@@ -20,6 +20,7 @@ add_executable(main
     src/engine/graphics/Mesh.cpp
     src/engine/graphics/RenderMesh.cpp
     src/engine/graphics/Shader.cpp
+    src/engine/graphics/Texture.cpp
     src/engine/math/Transform.cpp
     src/engine/scene/Camera.cpp
     src/engine/window/Window.cpp

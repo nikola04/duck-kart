@@ -5,9 +5,15 @@ struct FragmentInput
 {
     float4 position [[position]];
     float3 color;
+    float3 normal;
+    float2 uv;
 };
 
-fragment float4 main0(FragmentInput input [[stage_in]])
-{
-    return float4(input.color, 1.0);
+fragment float4 main0(
+    FragmentInput input [[stage_in]],
+    texture2d<float> baseTexture [[texture(0)]],
+    sampler baseSampler [[sampler(0)]]
+){
+    float4 texColor = baseTexture.sample(baseSampler, input.uv);
+    return texColor * float4(input.color, 1.0);
 }

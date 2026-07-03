@@ -3,7 +3,7 @@
 
 namespace engine {
     Application::Application(): m_context(), m_window(WindowSettings{
-        .title = "Duck Karts",
+        .title = "Duck Kart",
         .width = 1280,
         .height = 720
     }), m_renderer(m_window), m_input() {}
