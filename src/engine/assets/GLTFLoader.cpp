@@ -35,8 +35,7 @@ namespace engine {
     static std::vector<Vertex> loadVertices(
         const tinygltf::Model& model,
         const tinygltf::Primitive& primitive,
-        const glm::mat4& transform,
-        const glm::vec3& color
+        const glm::mat4& transform
     ) {
         auto positionIt = primitive.attributes.find("POSITION");
         if (positionIt == primitive.attributes.end())
@@ -88,7 +87,6 @@ namespace engine {
             vertices.push_back(Vertex{
                 .position = {worldPos.x, worldPos.y, worldPos.z},
                 .normal = normal,
-                .color = color,
                 .uv = uv
             });
         }
@@ -131,26 +129,6 @@ namespace engine {
         }
 
         return indices;
-    }
-
-    static glm::vec3 primitiveColor(
-        const tinygltf::Model& model,
-        const tinygltf::Primitive& primitive
-    ) {
-        if (primitive.material < 0)
-            return {1.0f, 1.0f, 1.0f};
-
-        const auto& material = model.materials[primitive.material];
-        const auto& baseColor = material.pbrMetallicRoughness.baseColorFactor;
-
-        if (baseColor.size() < 3)
-            return {1.0f, 1.0f, 1.0f};
-
-        return {
-            static_cast<float>(baseColor[0]),
-            static_cast<float>(baseColor[1]),
-            static_cast<float>(baseColor[2])
-        };
     }
 
     static glm::mat4 nodeMatrix(const tinygltf::Node& node) {
@@ -241,15 +219,15 @@ namespace engine {
             const tinygltf::Mesh& mesh = model.meshes[node.mesh];
 
             for (const auto& primitive : mesh.primitives) {
-                const glm::vec3 color = primitiveColor(model, primitive);
-
                 LoadedMesh loadedMesh{
                     .mesh = Mesh{
-                        loadVertices(model, primitive, globalTransform, color),
+                        loadVertices(model, primitive, globalTransform),
                         loadIndices(model, primitive)
                     },
-                    .material = primitive.material >= 0 ? primitive.material + 1 : 0
+                    .material = primitive.material
                 };
+
+                std::cout << "mesh " << loadedModel.meshes.size() << " material " << primitive.material << std::endl;
 
                 loadedModel.meshes.push_back(std::move(loadedMesh));
             }
@@ -277,10 +255,6 @@ namespace engine {
             throw std::runtime_error("GLB file has no meshes: " + path.string());
 
         LoadedModel loadedModel;
-        loadedModel.materials.push_back(LoadedMaterial{
-            .baseColor = {1.0f, 1.0f, 1.0f},
-            .baseColorTexture = -1
-        });
 
         int sceneIndex = model.defaultScene >= 0 ? model.defaultScene : 0;
         const tinygltf::Scene& scene = model.scenes[sceneIndex];

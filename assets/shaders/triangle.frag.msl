@@ -4,16 +4,23 @@ using namespace metal;
 struct FragmentInput
 {
     float4 position [[position]];
-    float3 color;
     float3 normal;
     float2 uv;
 };
 
+struct MaterialUniforms
+{
+    float4 baseColor;
+};
+
 fragment float4 main0(
     FragmentInput input [[stage_in]],
+    constant MaterialUniforms& material [[buffer(0)]],
     texture2d<float> baseTexture [[texture(0)]],
     sampler baseSampler [[sampler(0)]]
-){
+)
+{
     float4 texColor = baseTexture.sample(baseSampler, input.uv);
-    return texColor * float4(input.color, 1.0);
+
+    return texColor * material.baseColor;
 }

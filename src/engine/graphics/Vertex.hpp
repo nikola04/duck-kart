@@ -10,7 +10,6 @@ namespace engine {
     struct Vertex {
         glm::vec3 position;
         glm::vec3 normal;
-        glm::vec3 color;
         glm::vec2 uv;
     };
 
@@ -18,7 +17,7 @@ namespace engine {
     struct VertexLayout<Vertex> {
         static SDL_GPUVertexInputState create() {
             static SDL_GPUVertexBufferDescription buffer_desc{};
-            static SDL_GPUVertexAttribute attributes[4]{};
+            static SDL_GPUVertexAttribute attributes[3]{};
 
             buffer_desc.slot = 0;
             buffer_desc.pitch = sizeof(Vertex);
@@ -37,19 +36,14 @@ namespace engine {
 
             attributes[2].location = 2;
             attributes[2].buffer_slot = 0;
-            attributes[2].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
-            attributes[2].offset = offsetof(Vertex, color);
-
-            attributes[3].location = 3;
-            attributes[3].buffer_slot = 0;
-            attributes[3].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
-            attributes[3].offset = offsetof(Vertex, uv);
+            attributes[2].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
+            attributes[2].offset = offsetof(Vertex, uv);
 
             SDL_GPUVertexInputState state{};
             state.vertex_buffer_descriptions = &buffer_desc;
             state.num_vertex_buffers = 1;
             state.vertex_attributes = attributes;
-            state.num_vertex_attributes = 4;
+            state.num_vertex_attributes = 3;
 
             return state;
         }

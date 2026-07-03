@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_stdinc.h>
+#include <glm/fwd.hpp>
 #include "../window/Window.hpp"
 #include "../math/Transform.hpp"
 #include "../scene/Camera.hpp"
@@ -26,7 +27,13 @@ namespace engine {
             Texture createTexture(const void* pixels, Uint32 width, Uint32 height);
 
             void beginRenderPass();
-            void draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Texture* texture);
+            void draw(
+                const RenderMesh& mesh,
+                const Transform& transform,
+                const Camera& camera,
+                const Texture* texture = nullptr,
+                const glm::vec4& base_color = {1.0f, 1.0f, 1.0f, 1.0f}
+            );
             void endRenderPass();
 
             void beginFrame();

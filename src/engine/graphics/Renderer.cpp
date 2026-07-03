@@ -3,6 +3,7 @@
 #include "Shader.hpp"
 #include "Texture.hpp"
 #include "Vertex.hpp"
+#include "uniforms/MaterialUniforms.hpp"
 #include "uniforms/VertexUniforms.hpp"
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_stdinc.h>
@@ -68,6 +69,9 @@ namespace engine {
         if (!m_device)
             return;
 
+        SDL_WaitForGPUIdle(m_device);
+        m_white_texture.reset();
+
         if (m_pipeline) {
             SDL_ReleaseGPUGraphicsPipeline(m_device, m_pipeline);
             m_pipeline = nullptr;
@@ -85,6 +89,7 @@ namespace engine {
 
         SDL_ReleaseWindowFromGPUDevice(m_device, m_window.handle());
         SDL_DestroyGPUDevice(m_device);
+        m_device = nullptr;
     }
 
     SDL_GPUDevice* Renderer::device() const {
@@ -289,7 +294,7 @@ namespace engine {
         return RenderMesh(m_device, vertexBuffer, indexBuffer, static_cast<std::uint32_t>(indices.size()));
     }
 
-    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Texture* texture) {
+    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Texture* texture, const glm::vec4& base_color) {
         if (!m_render_pass)
             throw std::logic_error("Renderer::draw called outside an active render pass");
 
@@ -299,8 +304,11 @@ namespace engine {
         uniforms.model = transform.matrix();
         uniforms.view = camera.viewMatrix();
         uniforms.projection = camera.projectionMatrix(aspect_ration);
-
         SDL_PushGPUVertexUniformData(m_command_buffer, 0, &uniforms, sizeof(VertexUniforms));
+
+        MaterialUniforms material_uniforms{};
+        material_uniforms.base_color = base_color;
+        SDL_PushGPUFragmentUniformData(m_command_buffer, 0, &material_uniforms, sizeof(MaterialUniforms));
 
         SDL_BindGPUGraphicsPipeline(m_render_pass, m_pipeline);
 

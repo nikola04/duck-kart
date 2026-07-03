@@ -7,7 +7,7 @@ namespace game
     engine::Mesh createPyramidMesh()
     {
         std::vector<engine::Vertex> vertices = {
-            // Position                    Color
+            // Position                    Normal
 
             // Base
             { { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } }, // 0

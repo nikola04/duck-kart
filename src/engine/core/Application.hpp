@@ -12,6 +12,7 @@ namespace engine {
             virtual ~Application() = default;
 
             int run();
+            void quit();
 
         protected:
             virtual void update(float dt) {};

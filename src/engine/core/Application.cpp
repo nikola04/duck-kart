@@ -31,6 +31,9 @@ namespace engine {
 
             update(dt);
 
+            if (!m_running)
+                break;
+
             m_renderer.beginFrame();
             m_renderer.beginRenderPass();
             render();
@@ -47,5 +50,9 @@ namespace engine {
 
     Input& Application::input() {
         return m_input;
+    }
+
+    void Application::quit() {
+        m_running = false;
     }
 }
