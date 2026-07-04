@@ -3,8 +3,17 @@
 #include <iterator>
 
 Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
-     engine::RenderModel kartModel = m_assets.loadModel("assets/models/sample.glb");
-     m_scene.objects.insert(m_scene.objects.end(), std::make_move_iterator(kartModel.objects.begin()), std::make_move_iterator(kartModel.objects.end()));
+    engine::Transform transform{};
+    transform.scale = { 50.0f,50.0f,50.0f};
+    engine::RenderModel kartModel = m_assets.loadModel("assets/models/sample.glb", transform);
+    m_scene.objects.insert(m_scene.objects.end(), std::make_move_iterator(kartModel.objects.begin()), std::make_move_iterator(kartModel.objects.end()));
+
+
+    engine::Transform transform2{};
+    transform2.scale = { 50.0f,50.0f,50.0f};
+    transform2.position.z = 10.0f;
+    engine::RenderModel kartModel2 = m_assets.loadModel("assets/models/sample.glb", transform2);
+    m_scene.objects.insert(m_scene.objects.end(), std::make_move_iterator(kartModel2.objects.begin()), std::make_move_iterator(kartModel2.objects.end()));
 }
 
 void Game::update(float dt){
