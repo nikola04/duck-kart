@@ -204,12 +204,13 @@ namespace engine {
         result.metallic = static_cast<float>(pbr.metallicFactor);
         result.roughness = static_cast<float>(pbr.roughnessFactor);
 
-        std::cout
-            << "metallic="
-            << result.metallic
-            << " roughness="
-            << result.roughness
-            << '\n';
+        if (material.alphaMode == "MASK")
+            result.alphaMode = AlphaMode::Mask;
+        else if (material.alphaMode == "BLEND")
+            result.alphaMode = AlphaMode::Blend;
+        else result.alphaMode = AlphaMode::Opaque;
+
+        result.alphaCutoff = static_cast<float>(material.alphaCutoff);
 
         if (pbr.baseColorTexture.index >= 0) {
             const auto& gltfTexture = model.textures[pbr.baseColorTexture.index];

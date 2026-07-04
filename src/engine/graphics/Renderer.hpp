@@ -8,10 +8,11 @@
 #include "../math/Transform.hpp"
 #include "../scene/Camera.hpp"
 #include "../scene/Scene.hpp"
+#include "Material.hpp"
 #include "Mesh.hpp"
 #include "RenderMesh.hpp"
 #include "Texture.hpp"
-#include "uniforms/LightUniforms.hpp"
+#include "uniforms/PointLightUniforms.hpp"
 
 namespace engine {
     class Renderer {
@@ -37,7 +38,10 @@ namespace engine {
                 const glm::vec4& base_color,
                 float metallic,
                 float roughness,
-                const LightUniforms& light
+                AlphaMode alpha_mode,
+                float alpha_cutoff,
+                const DirectionalLight& light,
+                const PointLightUniforms& pointLights
             );
             void render(const Scene& scene);
             void endRenderPass();

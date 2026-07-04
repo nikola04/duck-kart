@@ -4,8 +4,8 @@
 #include "Texture.hpp"
 #include "Vertex.hpp"
 #include "uniforms/CameraUniforms.hpp"
-#include "uniforms/LightUniforms.hpp"
 #include "uniforms/MaterialUniforms.hpp"
+#include "uniforms/PointLightUniforms.hpp"
 #include "uniforms/VertexUniforms.hpp"
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_stdinc.h>
@@ -300,11 +300,19 @@ namespace engine {
 
     void Renderer::render(const Scene& scene) {
         for (const auto& object : scene.objects) {
-            this->draw(*object.mesh, object.transform, scene.camera, object.texture, object.baseColor, object.metallic, object.roughness, scene.sun);
+            PointLightUniforms pointLightUniforms{};
+
+            std::size_t count = std::min(scene.pointLights.size(), static_cast<std::size_t>(MaxPointLights));
+            pointLightUniforms.count.x = static_cast<float>(count);
+
+            for (std::size_t i = 0; i < count; ++i)
+                pointLightUniforms.lights[i] = scene.pointLights[i];
+
+            this->draw(*object.mesh, object.transform, scene.camera, object.texture, object.baseColor, object.metallic, object.roughness, object.alphaMode, object.alphaCutoff, scene.sun, pointLightUniforms);
         }
     }
 
-    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Texture* texture, const glm::vec4& base_color, float metallic, float roughness, const LightUniforms& light) {
+    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Texture* texture, const glm::vec4& base_color, float metallic, float roughness, AlphaMode alpha_mode, float alpha_cutoff, const DirectionalLight& light, const PointLightUniforms& pointLights) {
         if (!m_render_pass)
             throw std::logic_error("Renderer::draw called outside an active render pass");
 
@@ -318,14 +326,16 @@ namespace engine {
 
         MaterialUniforms material_uniforms{};
         material_uniforms.base_color = base_color;
-        material_uniforms.properties = { metallic, roughness, 0.0f, 0.0f };
+        material_uniforms.properties = { metallic, roughness, alpha_cutoff, alpha_mode };
         SDL_PushGPUFragmentUniformData(m_command_buffer, 0, &material_uniforms, sizeof(MaterialUniforms));
-
-        SDL_PushGPUFragmentUniformData(m_command_buffer, 1, &light, sizeof(LightUniforms));
 
         CameraUniforms camera_uniforms{};
         camera_uniforms.position = glm::vec4{camera.transform.position, 1.0f};
-        SDL_PushGPUFragmentUniformData(m_command_buffer, 2, &camera_uniforms, sizeof(CameraUniforms));
+        SDL_PushGPUFragmentUniformData(m_command_buffer, 1, &camera_uniforms, sizeof(CameraUniforms));
+
+        SDL_PushGPUFragmentUniformData(m_command_buffer, 2, &light, sizeof(DirectionalLight));
+
+        SDL_PushGPUFragmentUniformData(m_command_buffer, 3, &pointLights, sizeof(PointLightUniforms));
 
         SDL_BindGPUGraphicsPipeline(m_render_pass, m_pipeline);
 

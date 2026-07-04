@@ -41,7 +41,7 @@ namespace engine {
             case engine::ShaderStage::Fragment:
                 info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
                 info.num_samplers = 1;
-                info.num_uniform_buffers = 3;
+                info.num_uniform_buffers = 4;
                 break;
         }
 

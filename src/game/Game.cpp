@@ -1,19 +1,30 @@
 #include "Game.hpp"
 #include <SDL3/SDL_scancode.h>
-#include <iterator>
 
 Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
-    engine::Transform transform{};
-    transform.scale = { 50.0f,50.0f,50.0f};
-    engine::RenderModel kartModel = m_assets.loadModel("assets/models/sample.glb", transform);
-    m_scene.objects.insert(m_scene.objects.end(), std::make_move_iterator(kartModel.objects.begin()), std::make_move_iterator(kartModel.objects.end()));
+    // engine::PointLight light{
+    //     .position = {0.0f, 5.0f, 5.0f, 1.0f},
+    //     .color = {1.0f, 0.9f, 0.7f, 1.0f},
+    //     .properties = {5.0f, 15.0f, 0.0f, 0.0f}
+    // };
+
+    // engine::Transform bulbTransform;
+    // bulbTransform.position = glm::vec3(light.position);
+    // bulbTransform.scale = {0.2f, 0.2f, 0.2f};
+    // m_scene.addModel(m_assets.loadModel("assets/models/sphere.glb", bulbTransform));
+
+    // engine::Transform transform{};
+    // transform.scale = { 50.0f, 50.0f, 50.0f};
+    // m_scene.addModel(m_assets.loadModel("assets/models/sample.glb", transform));
 
 
     engine::Transform transform2{};
-    transform2.scale = { 50.0f,50.0f,50.0f};
-    transform2.position.z = 10.0f;
-    engine::RenderModel kartModel2 = m_assets.loadModel("assets/models/sample.glb", transform2);
-    m_scene.objects.insert(m_scene.objects.end(), std::make_move_iterator(kartModel2.objects.begin()), std::make_move_iterator(kartModel2.objects.end()));
+    // transform2.scale = { 50.0f, 50.0f, 50.0f };
+    transform2.scale = { 0.5f, .5f, 0.5f };
+    // transform2.position.z = 10.0f;
+    m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track_free.glb", transform2));
+
+    // m_scene.pointLights.push_back(light);
 }
 
 void Game::update(float dt){

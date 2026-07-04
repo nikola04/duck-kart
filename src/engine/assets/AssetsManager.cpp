@@ -1,9 +1,7 @@
 #include "AssetsManager.hpp"
 #include "GLTFLoader.hpp"
 #include <cstddef>
-#include <iostream>
 #include <memory>
-#include <ostream>
 #include <stdexcept>
 #include <string>
 
@@ -69,12 +67,16 @@ namespace engine {
             glm::vec4 baseColor{1.0f};
             float metallic = 0.0f;
             float roughness = 1.0f;
+            AlphaMode alpha_mode = AlphaMode::Opaque;
+            float alpha_cutoff = 0.5f;
 
             if (loadedMesh.material >= 0) {
                 const auto& material = model.materials[loadedMesh.material];
                 baseColor = glm::vec4(material.baseColor, 1.0f);
                 metallic = material.metallic;
                 roughness = material.roughness;
+                alpha_mode = material.alphaMode;
+                alpha_cutoff = material.alphaCutoff;
 
                 if (material.baseColorTexture >= 0) texture = getTexture(modelName + "#texture_" + std::to_string(material.baseColorTexture));
             }
@@ -85,6 +87,8 @@ namespace engine {
                 .baseColor = baseColor,
                 .metallic = metallic,
                 .roughness = roughness,
+                .alphaMode = alpha_mode,
+                .alphaCutoff = alpha_cutoff,
                 .transform = transform
             });
         }

@@ -6,13 +6,8 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 namespace engine {
-    struct RenderModel {
-        std::vector<RenderObject> objects;
-    };
-
     class AssetsManager {
         public:
             AssetsManager(Renderer& renderer);

@@ -27,11 +27,27 @@ struct CameraUniforms
     float4 position;
 };
 
+#define MAX_POINT_LIGHTS 8
+
+struct PointLight
+{
+    float4 position;
+    float4 color;
+    float4 properties;
+};
+
+struct PointLightUniforms
+{
+    float4 count;
+    PointLight lights[MAX_POINT_LIGHTS];
+};
+
 fragment float4 main0(
     FragmentInput input [[stage_in]],
     constant MaterialUniforms& material [[buffer(0)]],
-    constant LightUniforms& light [[buffer(1)]],
-    constant CameraUniforms& camera [[buffer(2)]],
+    constant CameraUniforms& camera [[buffer(1)]],
+    constant LightUniforms& light [[buffer(2)]],
+    constant PointLightUniforms& pointLights [[buffer(3)]],
     texture2d<float> baseTexture [[texture(0)]],
     sampler baseSampler [[sampler(0)]]
 )
@@ -56,13 +72,52 @@ fragment float4 main0(
         shininess
     ) * specularStrength;
 
+    uint pointLightCount = min((uint)pointLights.count.x, (uint)MAX_POINT_LIGHTS);
+
     float4 texColor = baseTexture.sample(baseSampler, input.uv);
+    float alphaCutoff = material.properties.z;
+    float alphaMode   = material.properties.w;
+
+    if (alphaMode > 0.5 && alphaMode < 1.5)
+    {
+        if (texColor.a < alphaCutoff)
+            discard_fragment();
+    }
     float3 baseColor = texColor.rgb * material.baseColor.rgb;
 
     float3 finalColor =
         baseColor * light.ambient.rgb +
         baseColor * light.color.rgb * diffuse +
         light.color.rgb * specular;
+
+    for (uint i = 0; i < pointLightCount; ++i)
+    {
+        PointLight pointLight = pointLights.lights[i];
+
+        float3 toLight = pointLight.position.xyz - input.worldPosition;
+        float distanceToLight = length(toLight);
+        float3 pointLightDir = normalize(toLight);
+
+        float intensity = pointLight.properties.x;
+        float radius = pointLight.properties.y;
+
+        float attenuation = saturate(1.0 - distanceToLight / radius);
+        attenuation *= attenuation;
+
+        float pointDiffuse = max(dot(normal, pointLightDir), 0.0);
+
+        float3 halfDirPoint = normalize(pointLightDir + viewDir);
+
+        float pointSpecular = pow(
+            max(dot(normal, halfDirPoint), 0.0),
+            shininess
+        ) * specularStrength;
+
+        finalColor +=
+            baseColor * pointLight.color.rgb * pointDiffuse * intensity * attenuation +
+            pointLight.color.rgb * pointSpecular * intensity * attenuation;
+    }
+
 
     return float4(finalColor, texColor.a * material.baseColor.a);
 }

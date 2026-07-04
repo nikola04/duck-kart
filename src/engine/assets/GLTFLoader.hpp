@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include "../graphics/Mesh.hpp"
+#include "../graphics/Material.hpp"
 
 namespace engine {
     struct LoadedMaterial {
@@ -10,6 +11,9 @@ namespace engine {
 
         float metallic = 0.0f;
         float roughness = 1.0f;
+
+        AlphaMode alphaMode = AlphaMode::Opaque;
+        float alphaCutoff = 0.5f;
     };
 
     struct LoadedTexture {
