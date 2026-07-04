@@ -1,6 +1,6 @@
 #include "Renderer.hpp"
+#include "GraphicsPipeline.hpp"
 #include "Mesh.hpp"
-#include "Shader.hpp"
 #include "Texture.hpp"
 #include "Vertex.hpp"
 #include "uniforms/CameraUniforms.hpp"
@@ -26,32 +26,10 @@ namespace engine {
         if(!SDL_ClaimWindowForGPUDevice(m_device, m_window.handle()))
             throw std::runtime_error(std::string("SDL_ClaimWindowForGPUDevice failed: ") + SDL_GetError());
 
-        Shader vertex_shader(m_device, "assets/shaders/triangle.vert.msl", ShaderStage::Vertex);
-        Shader fragment_shader(m_device, "assets/shaders/triangle.frag.msl", ShaderStage::Fragment);
-
-        SDL_GPUVertexInputState vertex_input_state = VertexLayout<Vertex>::create();
-
-        SDL_GPUColorTargetDescription color_target_desc{};
-        color_target_desc.format = SDL_GetGPUSwapchainTextureFormat(m_device, m_window.handle());
-
-        SDL_GPUGraphicsPipelineCreateInfo pipeline_info{};
-        pipeline_info.vertex_shader = vertex_shader.handle();
-        pipeline_info.fragment_shader = fragment_shader.handle();
-        pipeline_info.vertex_input_state = vertex_input_state;
-        pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
-        pipeline_info.target_info.num_color_targets = 1;
-        pipeline_info.target_info.color_target_descriptions = &color_target_desc;
-        pipeline_info.target_info.has_depth_stencil_target = true;
-        pipeline_info.target_info.depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
-
-        pipeline_info.depth_stencil_state.enable_depth_test = true;
-        pipeline_info.depth_stencil_state.enable_depth_write = true;
-        pipeline_info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS;
-
-        m_pipeline = SDL_CreateGPUGraphicsPipeline(m_device, &pipeline_info);
-
-        if (!m_pipeline)
-            throw std::runtime_error(std::string("SDL_CreateGPUGraphicsPipeline failed: ") + SDL_GetError());
+        m_mainPipeline.emplace(m_device, "assets/shaders/default.vert.msl", "assets/shaders/default.frag.msl", GraphicsPipelineInfo{
+            .colorFormat = SDL_GetGPUSwapchainTextureFormat(m_device, m_window.handle()),
+            .depthFormat = SDL_GPU_TEXTUREFORMAT_D32_FLOAT
+        });
 
         SDL_GPUSamplerCreateInfo sampler_info{};
         sampler_info.min_filter = SDL_GPU_FILTER_LINEAR;
@@ -80,11 +58,6 @@ namespace engine {
         SDL_WaitForGPUIdle(m_device);
         m_white_texture.reset();
         m_default_normal_texture.reset();
-
-        if (m_pipeline) {
-            SDL_ReleaseGPUGraphicsPipeline(m_device, m_pipeline);
-            m_pipeline = nullptr;
-        }
 
         if (m_depth_texture) {
             SDL_ReleaseGPUTexture(m_device, m_depth_texture);
@@ -340,7 +313,7 @@ namespace engine {
 
         SDL_PushGPUFragmentUniformData(m_command_buffer, 3, &pointLights, sizeof(PointLightUniforms));
 
-        SDL_BindGPUGraphicsPipeline(m_render_pass, m_pipeline);
+        m_mainPipeline->bind(m_render_pass);
 
         // Vertex buffer
         SDL_GPUBufferBinding vertex_binding{};

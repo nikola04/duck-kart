@@ -5,10 +5,12 @@
 #include <SDL3/SDL_stdinc.h>
 #include <glm/fwd.hpp>
 #include <memory>
+#include <optional>
 #include "../window/Window.hpp"
 #include "../math/Transform.hpp"
 #include "../scene/Camera.hpp"
 #include "../scene/Scene.hpp"
+#include "GraphicsPipeline.hpp"
 #include "Material.hpp"
 #include "Mesh.hpp"
 #include "RenderMesh.hpp"
@@ -47,9 +49,8 @@ namespace engine {
 
         private:
             Window& m_window;
-
             SDL_GPUDevice* m_device = nullptr;
-            SDL_GPUGraphicsPipeline* m_pipeline = nullptr;
+            std::optional<GraphicsPipeline> m_mainPipeline;
 
             SDL_GPUCommandBuffer* m_command_buffer = nullptr;
             SDL_GPUTexture* m_swapchain_texture = nullptr;
