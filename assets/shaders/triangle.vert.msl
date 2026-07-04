@@ -6,6 +6,7 @@ struct VertexInput
     float3 position [[attribute(0)]];
     float3 normal   [[attribute(1)]];
     float2 uv       [[attribute(2)]];
+    float4 tangent  [[attribute(3)]];
 };
 
 struct VertexOutput
@@ -14,6 +15,7 @@ struct VertexOutput
     float3 worldPosition;
     float3 normal;
     float2 uv;
+    float4 tangent;
 };
 
 struct VertexUniforms
@@ -39,8 +41,31 @@ vertex VertexOutput main0(
         worldPosition;
 
     output.worldPosition = worldPosition.xyz;
-    output.normal = input.normal;
+
+    float3x3 modelMatrix = float3x3(
+        uniforms.model[0].xyz,
+        uniforms.model[1].xyz,
+        uniforms.model[2].xyz
+    );
+
+    float3 a = modelMatrix[0];
+    float3 b = modelMatrix[1];
+    float3 c = modelMatrix[2];
+
+    float determinant = dot(a, cross(b, c));
+    float3x3 normalMatrix = float3x3(
+        cross(b, c),
+        cross(c, a),
+        cross(a, b)
+    ) / determinant;
+
+    float3 N = normalize(normalMatrix * input.normal);
+    float3 T = normalize(modelMatrix * input.tangent.xyz);
+    T = normalize(T - N * dot(N, T));
+
+    output.normal = N;
     output.uv = input.uv;
+    output.tangent = float4(T, input.tangent.w);
 
     return output;
 }

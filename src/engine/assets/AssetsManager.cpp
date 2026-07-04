@@ -6,7 +6,7 @@
 #include <string>
 
 namespace engine {
-    AssetsManager::AssetsManager(Renderer& renderer): m_renderer(renderer) {}
+    AssetsManager::AssetsManager(Renderer& renderer): m_renderer(renderer), m_default_material() {}
 
     RenderMesh* AssetsManager::createRenderMesh(const std::string& name, const Mesh& mesh) {
         if (auto* mesh = getRenderMesh(name))
@@ -44,6 +44,24 @@ namespace engine {
         return ptr;
     }
 
+    Material* AssetsManager::getMaterial(const std::string& name) {
+        auto it = m_materials.find(name);
+        if (it == m_materials.end()) return nullptr;
+
+        return it->second.get();
+    }
+
+    Material* AssetsManager::createMaterial(const std::string& name, const LoadedMaterial& loadedMaterial, const Texture* texture, const Texture* normalTexture) {
+        if (auto* material = getMaterial(name))
+            return material;
+
+        auto material = std::make_unique<Material> (glm::vec4(loadedMaterial.baseColor, 1.0f), texture, normalTexture, loadedMaterial.metallic, loadedMaterial.roughness, loadedMaterial.alphaMode, loadedMaterial.alphaCutoff);
+        Material* ptr = material.get();
+
+        m_materials.emplace(name, std::move(material));
+        return ptr;
+    }
+
     RenderModel AssetsManager::loadModel(const std::filesystem::path& path, Transform transform) {
         std::string modelName = path.generic_string();
         engine::LoadedModel model;
@@ -63,33 +81,22 @@ namespace engine {
             const auto& loadedMesh = model.meshes[i];
             engine::RenderMesh* renderMesh = createRenderMesh(modelName + "#mesh_" + std::to_string(i), loadedMesh.mesh);
 
-            const engine::Texture* texture = nullptr;
-            glm::vec4 baseColor{1.0f};
-            float metallic = 0.0f;
-            float roughness = 1.0f;
-            AlphaMode alpha_mode = AlphaMode::Opaque;
-            float alpha_cutoff = 0.5f;
-
+            Material* material = &m_default_material;
             if (loadedMesh.material >= 0) {
-                const auto& material = model.materials[loadedMesh.material];
-                baseColor = glm::vec4(material.baseColor, 1.0f);
-                metallic = material.metallic;
-                roughness = material.roughness;
-                alpha_mode = material.alphaMode;
-                alpha_cutoff = material.alphaCutoff;
+                const auto& loadedMaterial = model.materials[loadedMesh.material];
+                const Texture* texture = nullptr;
+                const Texture* normalTexture = nullptr;
 
-                if (material.baseColorTexture >= 0) texture = getTexture(modelName + "#texture_" + std::to_string(material.baseColorTexture));
+                if (loadedMaterial.baseColorTexture >= 0) texture = getTexture(modelName + "#texture_" + std::to_string(loadedMaterial.baseColorTexture));
+                if (loadedMaterial.normalTexture >= 0) normalTexture = getTexture(modelName + "#texture_" + std::to_string(loadedMaterial.normalTexture));
+
+                material = createMaterial(modelName + "#material_" + std::to_string(loadedMesh.material), loadedMaterial, texture, normalTexture);
             }
 
             renderModel.objects.push_back(engine::RenderObject{
                 .mesh = renderMesh,
-                .texture = texture,
-                .baseColor = baseColor,
-                .metallic = metallic,
-                .roughness = roughness,
-                .alphaMode = alpha_mode,
-                .alphaCutoff = alpha_cutoff,
-                .transform = transform
+                .material = material,
+                .transform = transform,
             });
         }
 

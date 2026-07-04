@@ -4,6 +4,7 @@
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_stdinc.h>
 #include <glm/fwd.hpp>
+#include <memory>
 #include "../window/Window.hpp"
 #include "../math/Transform.hpp"
 #include "../scene/Camera.hpp"
@@ -34,12 +35,7 @@ namespace engine {
                 const RenderMesh& mesh,
                 const Transform& transform,
                 const Camera& camera,
-                const Texture* texture,
-                const glm::vec4& base_color,
-                float metallic,
-                float roughness,
-                AlphaMode alpha_mode,
-                float alpha_cutoff,
+                const Material& material,
                 const DirectionalLight& light,
                 const PointLightUniforms& pointLights
             );
@@ -62,6 +58,7 @@ namespace engine {
             SDL_GPUSampler* m_default_sampler = nullptr;
 
             std::unique_ptr<Texture> m_white_texture;
+            std::unique_ptr<Texture> m_default_normal_texture;
 
             Uint32 m_depth_width = 0;
             Uint32 m_depth_height = 0;

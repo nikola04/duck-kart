@@ -1,5 +1,6 @@
 #include "GLTFLoader.hpp"
 
+#include <glm/ext/quaternion_geometric.hpp>
 #include <glm/fwd.hpp>
 #include <iostream>
 #include <stdexcept>
@@ -43,15 +44,20 @@ namespace engine {
 
         const tinygltf::Accessor* normalAccessor = findAccessor(model, primitive, "NORMAL");
         const tinygltf::Accessor* uvAccessor = findAccessor(model, primitive, "TEXCOORD_0");
+        const tinygltf::Accessor* tangentAccessor = findAccessor(model, primitive, "TANGENT");
 
         const float* normals = nullptr;
         const float* uvs = nullptr;
+        const float* tangents = nullptr;
 
         if (normalAccessor)
             normals = reinterpret_cast<const float*>(accessorData(model, *normalAccessor));
 
         if (uvAccessor)
             uvs = reinterpret_cast<const float*>(accessorData(model, *uvAccessor));
+
+        if (tangentAccessor)
+            tangents = reinterpret_cast<const float*>(accessorData(model, *tangentAccessor));
 
         const tinygltf::Accessor& positionAccessor = model.accessors[positionIt->second];
 
@@ -70,6 +76,7 @@ namespace engine {
             glm::vec4 worldPos = transform * glm::vec4{x, y, z, 1.0f};
             glm::vec3 normal{ 0.0f, 1.0f, 0.0f };
             glm::vec2 uv{ 0.0f, 0.0f };
+            glm::vec4 tangent{1.0f, 0.0f, 0.0f, 1.0f};
 
             if (normals) {
                 normal = {
@@ -84,10 +91,23 @@ namespace engine {
             if (uvs)
                 uv = { uvs[i * 2 + 0], uvs[i * 2 + 1]};
 
+            if (tangents) {
+                glm::vec3 tangentDir{ tangents[i * 4 + 0], tangents[i * 4 + 1], tangents[i * 4 + 2] };
+                tangentDir = glm::normalize(normalMatrix * tangentDir);
+
+                tangent = {
+                    tangentDir.x,
+                    tangentDir.y,
+                    tangentDir.z,
+                    tangents[i * 4 + 3]
+                };
+            }
+
             vertices.push_back(Vertex{
                 .position = {worldPos.x, worldPos.y, worldPos.z},
                 .normal = normal,
-                .uv = uv
+                .uv = uv,
+                .tangent = tangent
             });
         }
 
@@ -211,6 +231,11 @@ namespace engine {
         else result.alphaMode = AlphaMode::Opaque;
 
         result.alphaCutoff = static_cast<float>(material.alphaCutoff);
+
+        if (material.normalTexture.index >= 0) {
+            const auto& gltfTexture = model.textures[material.normalTexture.index];
+            result.normalTexture = gltfTexture.source;
+        }
 
         if (pbr.baseColorTexture.index >= 0) {
             const auto& gltfTexture = model.textures[pbr.baseColorTexture.index];

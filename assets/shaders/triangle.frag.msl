@@ -7,6 +7,7 @@ struct FragmentInput
     float3 worldPosition;
     float3 normal;
     float2 uv;
+    float4 tangent;
 };
 
 struct MaterialUniforms
@@ -49,10 +50,22 @@ fragment float4 main0(
     constant LightUniforms& light [[buffer(2)]],
     constant PointLightUniforms& pointLights [[buffer(3)]],
     texture2d<float> baseTexture [[texture(0)]],
+    texture2d<float> normalTexture [[texture(1)]],
     sampler baseSampler [[sampler(0)]]
 )
 {
-    float3 normal = normalize(input.normal);
+    float3 N = normalize(input.normal);
+    float3 T = normalize(input.tangent.xyz);
+    float3 B = normalize(cross(T, N) * input.tangent.w);
+    float3 normalSample = normalTexture.sample(baseSampler, input.uv).rgb;
+
+    normalSample = normalSample * 2.0 - 1.0;
+
+    float3 normal = normalize(
+        T * normalSample.x +
+        B * normalSample.y +
+        N * normalSample.z
+    );
     float3 lightDir = normalize(-light.direction.xyz);
     float3 viewDir = normalize(camera.position.xyz - input.worldPosition);
 

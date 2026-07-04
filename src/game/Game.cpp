@@ -20,7 +20,7 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
 
     engine::Transform transform2{};
     // transform2.scale = { 50.0f, 50.0f, 50.0f };
-    transform2.scale = { 0.5f, .5f, 0.5f };
+    // transform2.scale = { 0.5f, .5f, 0.5f };
     // transform2.position.z = 10.0f;
     m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track_free.glb", transform2));
 
@@ -38,7 +38,7 @@ void Game::update(float dt){
     m_scene.camera.transform.rotation.x = std::clamp(m_scene.camera.transform.rotation.x, -maxPitch, maxPitch);
 
     if (input().isKeyDown(SDL_SCANCODE_LCTRL))
-        speed = 8.0f;
+        speed = 20.0f;
     // keyboard movement
     if (input().isKeyDown(SDL_SCANCODE_W))
         m_scene.camera.transform.position += m_scene.camera.transform.forward() * speed * dt;

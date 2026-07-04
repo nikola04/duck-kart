@@ -20,10 +20,16 @@ namespace engine {
             Texture* getTexture(const std::string& name);
             Texture* createTexture(const std::string& name, const LoadedTexture& loadedTexture);
 
+            Material* getMaterial(const std::string& name);
+            Material* createMaterial(const std::string& name, const LoadedMaterial& loadedMaterial, const Texture* texture, const Texture* normalTexture);
+
         private:
             Renderer& m_renderer;
 
+            Material m_default_material;
+
             std::unordered_map<std::string, std::unique_ptr<engine::Texture>> m_textures;
+            std::unordered_map<std::string, std::unique_ptr<engine::Material>> m_materials;
             std::unordered_map<std::string, std::unique_ptr<RenderMesh>> m_render_meshes;
     };
 }

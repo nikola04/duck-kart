@@ -13,6 +13,7 @@
 #include <glm/fwd.hpp>
 #include <glm/geometric.hpp>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
@@ -67,6 +68,9 @@ namespace engine {
 
         const std::uint8_t whitePixel[4] = { 255, 255, 255, 255 };
         m_white_texture = std::make_unique<Texture>(createTexture(whitePixel, 1, 1));
+
+        const std::uint8_t normalPixels[4] = { 128, 128, 255, 255 };
+        m_default_normal_texture = std::make_unique<Texture>(createTexture(normalPixels, 1, 1));
     }
 
     Renderer::~Renderer() {
@@ -75,6 +79,7 @@ namespace engine {
 
         SDL_WaitForGPUIdle(m_device);
         m_white_texture.reset();
+        m_default_normal_texture.reset();
 
         if (m_pipeline) {
             SDL_ReleaseGPUGraphicsPipeline(m_device, m_pipeline);
@@ -299,20 +304,18 @@ namespace engine {
     }
 
     void Renderer::render(const Scene& scene) {
-        for (const auto& object : scene.objects) {
-            PointLightUniforms pointLightUniforms{};
+        PointLightUniforms pointLightUniforms{};
+        std::size_t count = std::min(scene.pointLights.size(), static_cast<std::size_t>(MaxPointLights));
+        pointLightUniforms.count.x = static_cast<float>(count);
 
-            std::size_t count = std::min(scene.pointLights.size(), static_cast<std::size_t>(MaxPointLights));
-            pointLightUniforms.count.x = static_cast<float>(count);
+        for (std::size_t i = 0; i < count; ++i)
+            pointLightUniforms.lights[i] = scene.pointLights[i];
 
-            for (std::size_t i = 0; i < count; ++i)
-                pointLightUniforms.lights[i] = scene.pointLights[i];
-
-            this->draw(*object.mesh, object.transform, scene.camera, object.texture, object.baseColor, object.metallic, object.roughness, object.alphaMode, object.alphaCutoff, scene.sun, pointLightUniforms);
-        }
+        for (const auto& object : scene.objects)
+            this->draw(*object.mesh, object.transform, scene.camera, *object.material, scene.sun, pointLightUniforms);
     }
 
-    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Texture* texture, const glm::vec4& base_color, float metallic, float roughness, AlphaMode alpha_mode, float alpha_cutoff, const DirectionalLight& light, const PointLightUniforms& pointLights) {
+    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Material& material, const DirectionalLight& light, const PointLightUniforms& pointLights) {
         if (!m_render_pass)
             throw std::logic_error("Renderer::draw called outside an active render pass");
 
@@ -325,8 +328,8 @@ namespace engine {
         SDL_PushGPUVertexUniformData(m_command_buffer, 0, &uniforms, sizeof(VertexUniforms));
 
         MaterialUniforms material_uniforms{};
-        material_uniforms.base_color = base_color;
-        material_uniforms.properties = { metallic, roughness, alpha_cutoff, alpha_mode };
+        material_uniforms.base_color = material.baseColor;
+        material_uniforms.properties = { material.metallic, material.roughness, material.alphaCutoff, material.alphaMode };
         SDL_PushGPUFragmentUniformData(m_command_buffer, 0, &material_uniforms, sizeof(MaterialUniforms));
 
         CameraUniforms camera_uniforms{};
@@ -353,13 +356,15 @@ namespace engine {
 
         SDL_BindGPUIndexBuffer(m_render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
 
-        const Texture* texture_to_bind = texture ? texture : m_white_texture.get();
+        const Texture* texture_to_bind = material.texture ? material.texture : m_white_texture.get();
+        const Texture* normal_texture_to_bind = material.normalTexture ? material.normalTexture : m_default_normal_texture.get();
 
-        SDL_GPUTextureSamplerBinding binding{};
-        binding.texture = texture_to_bind->handle();
-        binding.sampler = m_default_sampler;
+        SDL_GPUTextureSamplerBinding bindings[] = {
+            { .texture = texture_to_bind->handle(), .sampler = m_default_sampler },
+            { .texture = normal_texture_to_bind->handle(), .sampler = m_default_sampler },
+        };
 
-        SDL_BindGPUFragmentSamplers(m_render_pass, 0, &binding, 1);
+        SDL_BindGPUFragmentSamplers(m_render_pass, 0, bindings, 2);
 
         SDL_DrawGPUIndexedPrimitives(m_render_pass, mesh.indexCount(), 1, 0, 0, 0);
     }
