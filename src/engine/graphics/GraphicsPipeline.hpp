@@ -7,6 +7,12 @@ namespace engine {
     struct GraphicsPipelineInfo {
         SDL_GPUTextureFormat colorFormat;
         SDL_GPUTextureFormat depthFormat;
+
+        int fragmentSamplers = 0;
+
+        bool depthTest = true;
+        bool depthWrite = true;
+        SDL_GPUCompareOp compareOp = SDL_GPU_COMPAREOP_LESS;
     };
 
     class GraphicsPipeline {
@@ -18,8 +24,8 @@ namespace engine {
 
             GraphicsPipeline(const GraphicsPipeline&) = delete;
             GraphicsPipeline& operator =(const GraphicsPipeline&) = delete;
-            GraphicsPipeline(GraphicsPipeline&) noexcept = delete;
-            GraphicsPipeline& operator =(GraphicsPipeline&) noexcept = delete;
+            GraphicsPipeline(GraphicsPipeline&&) noexcept = default;
+            GraphicsPipeline& operator=(GraphicsPipeline&&) noexcept = default;
 
             void bind(SDL_GPURenderPass* pass) const;
 

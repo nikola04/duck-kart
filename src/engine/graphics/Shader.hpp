@@ -11,7 +11,7 @@ namespace engine {
 
     class Shader {
         public:
-            Shader(SDL_GPUDevice* device, const std::filesystem::path& path, ShaderStage stage);
+            Shader(SDL_GPUDevice* device, const std::filesystem::path& path, ShaderStage stage, int samplers = 0);
             ~Shader();
 
             Shader(const Shader& shader) = delete;

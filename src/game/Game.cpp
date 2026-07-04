@@ -18,11 +18,8 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
     // m_scene.addModel(m_assets.loadModel("assets/models/sample.glb", transform));
 
 
-    engine::Transform transform2{};
-    // transform2.scale = { 50.0f, 50.0f, 50.0f };
-    // transform2.scale = { 0.5f, .5f, 0.5f };
-    // transform2.position.z = 10.0f;
-    m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track_free.glb", transform2));
+    m_scene.skybox.cubemap = m_assets.loadCubemap("assets/skyboxes/day");
+    m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track_free.glb", {}));
 
     // m_scene.pointLights.push_back(light);
 }

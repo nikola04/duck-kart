@@ -1,9 +1,11 @@
 #include "AssetsManager.hpp"
 #include "GLTFLoader.hpp"
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <stb_image.h>
 
 namespace engine {
     AssetsManager::AssetsManager(Renderer& renderer): m_renderer(renderer), m_default_material() {}
@@ -101,5 +103,46 @@ namespace engine {
         }
 
         return renderModel;
+    }
+
+    const Cubemap* AssetsManager::loadCubemap(const std::filesystem::path& folder) {
+        auto it = m_cubemaps.find(folder);
+        if (it != m_cubemaps.end()) return it->second.get();
+
+        std::array<std::filesystem::path, 6> paths{
+            folder / "px.png",
+            folder / "nx.png",
+            folder / "py.png",
+            folder / "ny.png",
+            folder / "pz.png",
+            folder / "nz.png"
+        };
+        std::array<std::vector<std::uint8_t>, 6> faces;
+        int size = 0;
+
+        for (std::size_t i = 0; i < 6; i++) {
+            int w, h, c;
+            stbi_uc* data = stbi_load(paths[i].string().c_str(), &w, &h, &c, 4);
+
+            if (!data)
+                throw std::runtime_error("Failed to load cubemap face: " + paths[i].string());
+
+            if (w != h)
+                throw std::runtime_error("Cubemap face must be square: " + paths[i].string());
+
+            if (i == 0)
+                size = w;
+            else if (w != size || h != size)
+                throw std::runtime_error("All cubemap faces must have same size");
+
+            faces[i] = std::vector<std::uint8_t>(data, data + w * h * 4);
+            stbi_image_free(data);
+        }
+
+        auto cubemap = std::make_unique<Cubemap>(m_renderer.createCubemap(faces, static_cast<uint32_t>(size)));
+        const Cubemap* ptr = cubemap.get();
+
+        m_cubemaps.emplace(folder.generic_string(), std::move(cubemap));
+        return ptr;
     }
 }

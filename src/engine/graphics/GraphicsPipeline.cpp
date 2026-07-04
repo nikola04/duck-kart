@@ -6,7 +6,7 @@
 namespace engine {
     GraphicsPipeline::GraphicsPipeline(SDL_GPUDevice* device, const std::filesystem::path& vertex, const std::filesystem::path& fragment, GraphicsPipelineInfo info): m_device(device) {
         Shader vertex_shader(m_device, vertex, ShaderStage::Vertex);
-        Shader fragment_shader(m_device, fragment, ShaderStage::Fragment);
+        Shader fragment_shader(m_device, fragment, ShaderStage::Fragment, info.fragmentSamplers);
 
         SDL_GPUVertexInputState vertex_input_state = VertexLayout<Vertex>::create();
 
@@ -21,11 +21,11 @@ namespace engine {
         pipeline_info.target_info.num_color_targets = 1;
         pipeline_info.target_info.color_target_descriptions = &color_target_desc;
         pipeline_info.target_info.has_depth_stencil_target = true;
-        pipeline_info.target_info.depth_stencil_format = info.depthFormat;
 
-        pipeline_info.depth_stencil_state.enable_depth_test = true;
-        pipeline_info.depth_stencil_state.enable_depth_write = true;
-        pipeline_info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS;
+        pipeline_info.target_info.depth_stencil_format = info.depthFormat;
+        pipeline_info.depth_stencil_state.enable_depth_test = info.depthTest;
+        pipeline_info.depth_stencil_state.enable_depth_write = info.depthWrite;
+        pipeline_info.depth_stencil_state.compare_op = info.compareOp;
 
         m_pipeline = SDL_CreateGPUGraphicsPipeline(m_device, &pipeline_info);
 

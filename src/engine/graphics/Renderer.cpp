@@ -1,21 +1,7 @@
 #include "Renderer.hpp"
-#include "GraphicsPipeline.hpp"
-#include "Mesh.hpp"
-#include "Texture.hpp"
-#include "Vertex.hpp"
 #include "uniforms/CameraUniforms.hpp"
 #include "uniforms/MaterialUniforms.hpp"
-#include "uniforms/PointLightUniforms.hpp"
 #include "uniforms/VertexUniforms.hpp"
-#include <SDL3/SDL_gpu.h>
-#include <SDL3/SDL_stdinc.h>
-#include <cstring>
-#include <glm/fwd.hpp>
-#include <glm/geometric.hpp>
-#include <limits>
-#include <memory>
-#include <stdexcept>
-#include <string>
 
 namespace engine {
     Renderer::Renderer(Window& window): m_window(window) {
@@ -28,7 +14,17 @@ namespace engine {
 
         m_mainPipeline.emplace(m_device, "assets/shaders/default.vert.msl", "assets/shaders/default.frag.msl", GraphicsPipelineInfo{
             .colorFormat = SDL_GetGPUSwapchainTextureFormat(m_device, m_window.handle()),
-            .depthFormat = SDL_GPU_TEXTUREFORMAT_D32_FLOAT
+            .depthFormat = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+            .fragmentSamplers = 2
+        });
+
+        m_skyboxPipeline.emplace(m_device, "assets/shaders/skybox.vert.msl", "assets/shaders/skybox.frag.msl", GraphicsPipelineInfo{
+            .colorFormat = SDL_GetGPUSwapchainTextureFormat(m_device, m_window.handle()),
+            .depthFormat = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+            .fragmentSamplers = 1,
+            .depthTest = true,
+            .depthWrite = false,
+            .compareOp = SDL_GPU_COMPAREOP_LESS_OR_EQUAL
         });
 
         SDL_GPUSamplerCreateInfo sampler_info{};
@@ -49,6 +45,28 @@ namespace engine {
 
         const std::uint8_t normalPixels[4] = { 128, 128, 255, 255 };
         m_default_normal_texture = std::make_unique<Texture>(createTexture(normalPixels, 1, 1));
+
+        m_skyboxMesh.emplace(createRenderMesh({
+            std::vector<Vertex>{
+                {{-1, -1, -1}, {0,0,1}, {0,0}, {1,0,0,1}},
+                {{ 1, -1, -1}, {0,0,1}, {0,0}, {1,0,0,1}},
+                {{ 1,  1, -1}, {0,0,1}, {0,0}, {1,0,0,1}},
+                {{-1,  1, -1}, {0,0,1}, {0,0}, {1,0,0,1}},
+
+                {{-1, -1,  1}, {0,0,1}, {0,0}, {1,0,0,1}},
+                {{ 1, -1,  1}, {0,0,1}, {0,0}, {1,0,0,1}},
+                {{ 1,  1,  1}, {0,0,1}, {0,0}, {1,0,0,1}},
+                {{-1,  1,  1}, {0,0,1}, {0,0}, {1,0,0,1}},
+            },
+            std::vector<std::uint32_t>{
+                0, 1, 2, 2, 3, 0,
+                5, 4, 7, 7, 6, 5,
+                4, 0, 3, 3, 7, 4,
+                1, 5, 6, 6, 2, 1,
+                3, 2, 6, 6, 7, 3,
+                4, 5, 1, 1, 0, 4
+            }
+        }));
     }
 
     Renderer::~Renderer() {
@@ -56,8 +74,12 @@ namespace engine {
             return;
 
         SDL_WaitForGPUIdle(m_device);
+        m_skyboxMesh.reset();
         m_white_texture.reset();
         m_default_normal_texture.reset();
+
+        m_mainPipeline.reset();
+        m_skyboxPipeline.reset();
 
         if (m_depth_texture) {
             SDL_ReleaseGPUTexture(m_device, m_depth_texture);
@@ -80,6 +102,65 @@ namespace engine {
 
     SDL_GPUSampler* Renderer::defaultSampler() const {
         return m_default_sampler;
+    }
+
+    Cubemap Renderer::createCubemap(std::array<std::vector<std::uint8_t>, 6>& faces, std::uint32_t size) {
+        const Uint32 bytes_per_pixel = 4;
+        const Uint32 face_size = size * size * bytes_per_pixel;
+        const Uint32 upload_size = face_size * 6;
+
+        SDL_GPUTextureCreateInfo info{};
+        info.type = SDL_GPU_TEXTURETYPE_CUBE;
+        info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+        info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+        info.width = size;
+        info.height = size;
+        info.layer_count_or_depth = 6;
+        info.num_levels = 1;
+        info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+
+        SDL_GPUTexture* texture = SDL_CreateGPUTexture(m_device, &info);
+        if (!texture)
+            throw std::runtime_error(std::string("SDL_CreateGPUTexture cubemap failed: ") + SDL_GetError());
+
+        SDL_GPUTransferBufferCreateInfo transfer_info{};
+        transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+        transfer_info.size = upload_size;
+
+        SDL_GPUTransferBuffer* transfer_buffer = SDL_CreateGPUTransferBuffer(m_device, &transfer_info);
+
+        void* mapped = SDL_MapGPUTransferBuffer(m_device, transfer_buffer, false);
+
+        for (std::size_t face = 0; face < 6; face++)
+            std::memcpy(static_cast<std::uint8_t*>(mapped) + face * face_size, faces[face].data(), face_size);
+
+        SDL_UnmapGPUTransferBuffer(m_device, transfer_buffer);
+
+        SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(m_device);
+        SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(command_buffer);
+
+        for(std::uint32_t face = 0; face < 6; face++) {
+            SDL_GPUTextureTransferInfo source{};
+            source.transfer_buffer = transfer_buffer;
+            source.offset = face * face_size;
+            source.pixels_per_row = size;
+            source.rows_per_layer = size;
+
+            SDL_GPUTextureRegion destination{};
+            destination.texture = texture;
+            destination.layer = face;
+            destination.w = size;
+            destination.h = size;
+            destination.d = 1;
+
+            SDL_UploadToGPUTexture(copy_pass, &source, &destination, false);
+        }
+
+        SDL_EndGPUCopyPass(copy_pass);
+        SDL_SubmitGPUCommandBuffer(command_buffer);
+
+        SDL_ReleaseGPUTransferBuffer(m_device, transfer_buffer);
+        return Cubemap{ m_device, texture, size };
     }
 
     Texture Renderer::createTexture(const void* pixels, Uint32 width, Uint32 height) {
@@ -285,7 +366,57 @@ namespace engine {
             pointLightUniforms.lights[i] = scene.pointLights[i];
 
         for (const auto& object : scene.objects)
-            this->draw(*object.mesh, object.transform, scene.camera, *object.material, scene.sun, pointLightUniforms);
+            draw(*object.mesh, object.transform, scene.camera, *object.material, scene.sun, pointLightUniforms);
+
+        drawSkybox(scene.skybox, scene.camera);
+    }
+
+    void Renderer::drawSkybox(const Skybox& skybox, const Camera& camera) {
+        if (!m_render_pass)
+            throw std::logic_error("Renderer::drawSkybox called outside an active render pass");
+
+        if (!skybox.cubemap)
+            return;
+
+        m_skyboxPipeline->bind(m_render_pass);
+
+        SDL_GPUBufferBinding vertex_binding{};
+        vertex_binding.buffer = m_skyboxMesh->vertexBuffer();
+        vertex_binding.offset = 0;
+
+        SDL_BindGPUVertexBuffers(m_render_pass, 0, &vertex_binding, 1);
+
+        SDL_GPUBufferBinding index_binding{};
+        index_binding.buffer = m_skyboxMesh->indexBuffer();
+        index_binding.offset = 0;
+
+        SDL_BindGPUIndexBuffer(m_render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+
+        if (!skybox.cubemap)
+            return;
+
+        float aspectRatio =
+            static_cast<float>(m_window.width()) /
+            static_cast<float>(m_window.height());
+
+        struct SkyboxUniforms {
+            glm::mat4 view;
+            glm::mat4 projection;
+        };
+
+        SkyboxUniforms uniforms{};
+        uniforms.view = camera.viewMatrix();
+        uniforms.projection = camera.projectionMatrix(aspectRatio);
+
+        SDL_PushGPUVertexUniformData(m_command_buffer, 0, &uniforms, sizeof(uniforms));
+
+        SDL_GPUTextureSamplerBinding binding{};
+        binding.texture = skybox.cubemap->handle();
+        binding.sampler = m_default_sampler;
+
+        SDL_BindGPUFragmentSamplers(m_render_pass, 0, &binding, 1);
+
+        SDL_DrawGPUIndexedPrimitives(m_render_pass, m_skyboxMesh->indexCount(), 1, 0, 0, 0);
     }
 
     void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Material& material, const DirectionalLight& light, const PointLightUniforms& pointLights) {

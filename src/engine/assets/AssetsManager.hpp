@@ -13,6 +13,7 @@ namespace engine {
             AssetsManager(Renderer& renderer);
 
             RenderModel loadModel(const std::filesystem::path& path, Transform transform);
+            const Cubemap* loadCubemap(const std::filesystem::path& path);
 
             RenderMesh* getRenderMesh(const std::string& name);
             RenderMesh* createRenderMesh(const std::string& name, const Mesh& mesh);
@@ -31,5 +32,6 @@ namespace engine {
             std::unordered_map<std::string, std::unique_ptr<engine::Texture>> m_textures;
             std::unordered_map<std::string, std::unique_ptr<engine::Material>> m_materials;
             std::unordered_map<std::string, std::unique_ptr<RenderMesh>> m_render_meshes;
+            std::unordered_map<std::string, std::unique_ptr<Cubemap>> m_cubemaps;
     };
 }

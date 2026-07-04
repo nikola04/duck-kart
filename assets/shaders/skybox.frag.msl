@@ -1,0 +1,20 @@
+#include <metal_stdlib>
+using namespace metal;
+
+struct FragmentInput
+{
+    float4 position [[position]];
+    float3 direction;
+};
+
+fragment float4 main0(
+    FragmentInput input [[stage_in]],
+    texturecube<float> skyboxTexture [[texture(0)]],
+    sampler skyboxSampler [[sampler(0)]]
+)
+{
+    return skyboxTexture.sample(
+        skyboxSampler,
+        normalize(input.direction)
+    );
+}

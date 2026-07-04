@@ -2,6 +2,7 @@
 
 #include "Camera.hpp"
 #include "RenderObject.hpp"
+#include "Skybox.hpp"
 #include <iterator>
 #include <vector>
 
@@ -24,6 +25,7 @@ namespace engine {
 
     struct Scene {
         Camera camera;
+        Skybox skybox;
         DirectionalLight sun;
 
         std::vector<RenderObject> objects;

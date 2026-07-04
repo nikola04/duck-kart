@@ -10,6 +10,7 @@
 #include "../math/Transform.hpp"
 #include "../scene/Camera.hpp"
 #include "../scene/Scene.hpp"
+#include "Cubemap.hpp"
 #include "GraphicsPipeline.hpp"
 #include "Material.hpp"
 #include "Mesh.hpp"
@@ -31,6 +32,7 @@ namespace engine {
 
             RenderMesh createRenderMesh(const Mesh& mesh);
             Texture createTexture(const void* pixels, Uint32 width, Uint32 height);
+            Cubemap createCubemap(std::array<std::vector<std::uint8_t>, 6>& faces, std::uint32_t size = 0);
 
             void beginRenderPass();
             void draw(
@@ -41,6 +43,7 @@ namespace engine {
                 const DirectionalLight& light,
                 const PointLightUniforms& pointLights
             );
+            void drawSkybox(const Skybox& skybox, const Camera& camera);
             void render(const Scene& scene);
             void endRenderPass();
 
@@ -50,7 +53,11 @@ namespace engine {
         private:
             Window& m_window;
             SDL_GPUDevice* m_device = nullptr;
+
             std::optional<GraphicsPipeline> m_mainPipeline;
+            std::optional<GraphicsPipeline> m_skyboxPipeline;
+
+            std::optional<RenderMesh> m_skyboxMesh;
 
             SDL_GPUCommandBuffer* m_command_buffer = nullptr;
             SDL_GPUTexture* m_swapchain_texture = nullptr;
