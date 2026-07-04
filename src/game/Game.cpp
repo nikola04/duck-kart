@@ -1,62 +1,10 @@
 #include "Game.hpp"
-#include "meshes/PyramidMesh.hpp"
-#include "../engine/assets/GLTFLoader.hpp"
 #include <SDL3/SDL_scancode.h>
+#include <iterator>
 
-Game::Game(): engine::Application(), m_assets(renderer()), m_camera(), m_objects() {
-    engine::Mesh pyramidMesh = game::createPyramidMesh();
-    // engine::RenderMesh* pyramid = m_assets.createRenderMesh("pyramid", pyramidMesh);
-
-    // m_objects.push_back({
-    //     .mesh = pyramid
-    // });
-
-    // m_objects.push_back(engine::RenderObject {
-    //     .mesh = pyramid,
-    //     .transform = { .position = {5.0f, 1.0f, 1.0f} }
-    // });
-
-    engine::LoadedModel kartModel = engine::GLTFLoader::loadModel("assets/models/sample.glb");
-
-    for (const auto& loadedTexture : kartModel.textures) {
-        auto texture = std::make_unique<engine::Texture>(renderer().createTexture(loadedTexture.pixels.data(), loadedTexture.width, loadedTexture.height));
-        m_textures.push_back(std::move(texture));
-    }
-
-    for (std::size_t i = 0; i < kartModel.meshes.size(); ++i) {
-        const auto& loadedMesh = kartModel.meshes[i];
-        engine::Mesh mesh = loadedMesh.mesh;
-
-        engine::RenderMesh* renderMesh = m_assets.createRenderMesh("kart_mesh_" + std::to_string(i), mesh);
-
-        const engine::Texture* texture = nullptr;
-        glm::vec4 baseColor{1.0f};
-        float metallic = 0.0f;
-        float roughness = 1.0f;
-
-        if (loadedMesh.material >= 0) {
-            const auto& material = kartModel.materials[loadedMesh.material];
-            baseColor = glm::vec4(material.baseColor, 1.0f);
-            metallic = material.metallic;
-            roughness = material.roughness;
-
-            if (material.baseColorTexture >= 0) {
-                texture = m_textures[material.baseColorTexture].get();
-            }
-        }
-
-        engine::Transform transform;
-        transform.scale = { 50.0f, 50.0f, 50.0f };
-
-        m_objects.push_back(engine::RenderObject{
-            .mesh = renderMesh,
-            .texture = texture,
-            .baseColor = baseColor,
-            .metallic = metallic,
-            .roughness = roughness,
-            .transform = transform,
-        });
-    }
+Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
+     engine::RenderModel kartModel = m_assets.loadModel("assets/models/sample.glb");
+     m_scene.objects.insert(m_scene.objects.end(), std::make_move_iterator(kartModel.objects.begin()), std::make_move_iterator(kartModel.objects.end()));
 }
 
 void Game::update(float dt){
@@ -65,27 +13,26 @@ void Game::update(float dt){
     const float maxPitch = glm::radians(89.0f);
 
     // mouse movement
-    m_camera.transform.rotation.y += input().mouseDeltaX() * mouseSensitivity;
-    m_camera.transform.rotation.x -= input().mouseDeltaY() * mouseSensitivity;
-    m_camera.transform.rotation.x = std::clamp(m_camera.transform.rotation.x, -maxPitch, maxPitch);
+    m_scene.camera.transform.rotation.y += input().mouseDeltaX() * mouseSensitivity;
+    m_scene.camera.transform.rotation.x -= input().mouseDeltaY() * mouseSensitivity;
+    m_scene.camera.transform.rotation.x = std::clamp(m_scene.camera.transform.rotation.x, -maxPitch, maxPitch);
 
     if (input().isKeyDown(SDL_SCANCODE_LCTRL))
         speed = 8.0f;
     // keyboard movement
     if (input().isKeyDown(SDL_SCANCODE_W))
-        m_camera.transform.position += m_camera.transform.forward() * speed * dt;
+        m_scene.camera.transform.position += m_scene.camera.transform.forward() * speed * dt;
     if (input().isKeyDown(SDL_SCANCODE_S))
-        m_camera.transform.position -= m_camera.transform.forward() * speed * dt;
+        m_scene.camera.transform.position -= m_scene.camera.transform.forward() * speed * dt;
     if (input().isKeyDown(SDL_SCANCODE_A))
-        m_camera.transform.position -= m_camera.transform.right() * speed * dt;
+        m_scene.camera.transform.position -= m_scene.camera.transform.right() * speed * dt;
     if (input().isKeyDown(SDL_SCANCODE_D))
-        m_camera.transform.position += m_camera.transform.right() * speed * dt;
+        m_scene.camera.transform.position += m_scene.camera.transform.right() * speed * dt;
 
     if (input().isKeyDown(SDL_SCANCODE_ESCAPE))
         quit();
 }
 
 void Game::render() {
-    for(const auto& object : m_objects)
-        renderer().draw(*object.mesh, object.transform, m_camera, object.texture, object.baseColor, object.metallic, object.roughness);
+    renderer().render(m_scene);
 }

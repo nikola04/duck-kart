@@ -298,7 +298,13 @@ namespace engine {
         return RenderMesh(m_device, vertexBuffer, indexBuffer, static_cast<std::uint32_t>(indices.size()));
     }
 
-    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Texture* texture, const glm::vec4& base_color, float metallic, float roughness) {
+    void Renderer::render(const Scene& scene) {
+        for (const auto& object : scene.objects) {
+            this->draw(*object.mesh, object.transform, scene.camera, object.texture, object.baseColor, object.metallic, object.roughness, scene.sun);
+        }
+    }
+
+    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Texture* texture, const glm::vec4& base_color, float metallic, float roughness, const LightUniforms& light) {
         if (!m_render_pass)
             throw std::logic_error("Renderer::draw called outside an active render pass");
 
@@ -315,9 +321,7 @@ namespace engine {
         material_uniforms.properties = { metallic, roughness, 0.0f, 0.0f };
         SDL_PushGPUFragmentUniformData(m_command_buffer, 0, &material_uniforms, sizeof(MaterialUniforms));
 
-        LightUniforms light_uniforms{};
-        light_uniforms.direction = glm::vec4(glm::normalize(glm::vec3{-0.4f, -1.0f, -0.3f}), 0.0f);
-        SDL_PushGPUFragmentUniformData(m_command_buffer, 1, &light_uniforms, sizeof(LightUniforms));
+        SDL_PushGPUFragmentUniformData(m_command_buffer, 1, &light, sizeof(LightUniforms));
 
         CameraUniforms camera_uniforms{};
         camera_uniforms.position = glm::vec4{camera.transform.position, 1.0f};

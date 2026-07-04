@@ -1,10 +1,8 @@
 #pragma once
 
 #include "../engine/core/Application.hpp"
-#include "../engine/scene/RenderObject.hpp"
+#include "../engine/scene/Scene.hpp"
 #include "../engine/assets/AssetsManager.hpp"
-#include <memory>
-#include <vector>
 
 class Game final : public engine::Application {
     public:
@@ -15,8 +13,6 @@ class Game final : public engine::Application {
         void render() override;
 
     private:
+        engine::Scene m_scene;
         engine::AssetsManager m_assets;
-        engine::Camera m_camera;
-        std::vector<engine::RenderObject> m_objects;
-        std::vector<std::unique_ptr<engine::Texture>> m_textures;
 };

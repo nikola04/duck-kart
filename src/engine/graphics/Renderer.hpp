@@ -7,9 +7,11 @@
 #include "../window/Window.hpp"
 #include "../math/Transform.hpp"
 #include "../scene/Camera.hpp"
+#include "../scene/Scene.hpp"
 #include "Mesh.hpp"
 #include "RenderMesh.hpp"
 #include "Texture.hpp"
+#include "uniforms/LightUniforms.hpp"
 
 namespace engine {
     class Renderer {
@@ -34,8 +36,10 @@ namespace engine {
                 const Texture* texture,
                 const glm::vec4& base_color,
                 float metallic,
-                float roughness
+                float roughness,
+                const LightUniforms& light
             );
+            void render(const Scene& scene);
             void endRenderPass();
 
             void beginFrame();
