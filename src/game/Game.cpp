@@ -7,6 +7,7 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
     //     .color = {1.0f, 0.9f, 0.7f, 1.0f},
     //     .properties = {5.0f, 15.0f, 0.0f, 0.0f}
     // };
+    // m_scene.pointLights.push_back(light);
 
     // engine::Transform bulbTransform;
     // bulbTransform.position = glm::vec3(light.position);
@@ -20,8 +21,6 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
 
     m_scene.skybox.cubemap = m_assets.loadCubemap("assets/skyboxes/day");
     m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track_free.glb", {}));
-
-    // m_scene.pointLights.push_back(light);
 }
 
 void Game::update(float dt){

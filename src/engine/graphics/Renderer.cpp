@@ -2,6 +2,8 @@
 #include "uniforms/CameraUniforms.hpp"
 #include "uniforms/MaterialUniforms.hpp"
 #include "uniforms/VertexUniforms.hpp"
+#include "../math/Math.hpp"
+#include <SDL3/SDL_gpu.h>
 
 namespace engine {
     Renderer::Renderer(Window& window): m_window(window) {
@@ -31,20 +33,24 @@ namespace engine {
         sampler_info.min_filter = SDL_GPU_FILTER_LINEAR;
         sampler_info.mag_filter = SDL_GPU_FILTER_LINEAR;
         sampler_info.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR;
+        sampler_info.max_lod = 1000.0f;
 
         sampler_info.address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
         sampler_info.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
         sampler_info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
+
+        sampler_info.enable_anisotropy = true;
+        sampler_info.max_anisotropy = 16.0f;
 
         m_default_sampler = SDL_CreateGPUSampler(m_device, &sampler_info);
         if (!m_default_sampler)
             throw std::runtime_error(std::string("SDL_CreateGPUSampler failed: ") + SDL_GetError());
 
         const std::uint8_t whitePixel[4] = { 255, 255, 255, 255 };
-        m_white_texture = std::make_unique<Texture>(createTexture(whitePixel, 1, 1));
+        m_white_texture = std::make_unique<Texture>(createTexture(whitePixel, 1, 1, false));
 
         const std::uint8_t normalPixels[4] = { 128, 128, 255, 255 };
-        m_default_normal_texture = std::make_unique<Texture>(createTexture(normalPixels, 1, 1));
+        m_default_normal_texture = std::make_unique<Texture>(createTexture(normalPixels, 1, 1, false));
 
         m_skyboxMesh.emplace(createRenderMesh({
             std::vector<Vertex>{
@@ -112,11 +118,11 @@ namespace engine {
         SDL_GPUTextureCreateInfo info{};
         info.type = SDL_GPU_TEXTURETYPE_CUBE;
         info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
-        info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+        info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
         info.width = size;
         info.height = size;
         info.layer_count_or_depth = 6;
-        info.num_levels = 1;
+        info.num_levels = math::mipLevels(size, size);
         info.sample_count = SDL_GPU_SAMPLECOUNT_1;
 
         SDL_GPUTexture* texture = SDL_CreateGPUTexture(m_device, &info);
@@ -157,23 +163,27 @@ namespace engine {
         }
 
         SDL_EndGPUCopyPass(copy_pass);
-        SDL_SubmitGPUCommandBuffer(command_buffer);
+
+        SDL_GenerateMipmapsForGPUTexture(command_buffer, texture);
+
+        if (!SDL_SubmitGPUCommandBuffer(command_buffer))
+            throw std::runtime_error(std::string("SDL_SubmitGPUCommandBuffer in createCubemap failed: ") + SDL_GetError());
 
         SDL_ReleaseGPUTransferBuffer(m_device, transfer_buffer);
         return Cubemap{ m_device, texture, size };
     }
 
-    Texture Renderer::createTexture(const void* pixels, Uint32 width, Uint32 height) {
+    Texture Renderer::createTexture(const void* pixels, Uint32 width, Uint32 height, bool generate_mipmaps) {
         const Uint32 bytes_per_pixel = 4, upload_size = width * height * bytes_per_pixel;
 
         SDL_GPUTextureCreateInfo info{};
         info.type = SDL_GPU_TEXTURETYPE_2D;
         info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
-        info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+        info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
         info.width = width;
         info.height = height;
         info.layer_count_or_depth = 1;
-        info.num_levels = 1;
+        info.num_levels = generate_mipmaps ? math::mipLevels(width, height) : 1;
         info.sample_count = SDL_GPU_SAMPLECOUNT_1;
 
         SDL_GPUTexture* texture = SDL_CreateGPUTexture(m_device, &info);
@@ -208,11 +218,15 @@ namespace engine {
         destination.d = 1;
 
         SDL_UploadToGPUTexture(copy_pass, &source, &destination, false);
-
         SDL_EndGPUCopyPass(copy_pass);
-        SDL_SubmitGPUCommandBuffer(command_buffer);
 
+        if (generate_mipmaps && info.num_levels > 1)
+            SDL_GenerateMipmapsForGPUTexture(command_buffer, texture);
+
+        if (!SDL_SubmitGPUCommandBuffer(command_buffer))
+            throw std::runtime_error(std::string("SDL_SubmitGPUCommandBuffer in createTexture failed: ") + SDL_GetError());
         SDL_ReleaseGPUTransferBuffer(m_device, transfer_buffer);
+
         return Texture{ m_device, texture, width, height };
     }
 
@@ -349,7 +363,7 @@ namespace engine {
             SDL_ReleaseGPUTransferBuffer(m_device, transferBuffer);
             SDL_ReleaseGPUBuffer(m_device, indexBuffer);
             SDL_ReleaseGPUBuffer(m_device, vertexBuffer);
-            throw std::runtime_error(std::string("Failed to submit mesh upload: ") + SDL_GetError());
+            throw std::runtime_error(std::string("SDL_SubmitGPUCommandBuffer in createRenderMesh failed: ") + SDL_GetError());
         }
 
         SDL_ReleaseGPUTransferBuffer(m_device, transferBuffer);
@@ -391,9 +405,6 @@ namespace engine {
         index_binding.offset = 0;
 
         SDL_BindGPUIndexBuffer(m_render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
-
-        if (!skybox.cubemap)
-            return;
 
         float aspectRatio =
             static_cast<float>(m_window.width()) /
@@ -540,7 +551,7 @@ namespace engine {
             if (!SDL_SubmitGPUCommandBuffer(m_command_buffer)) {
                 m_command_buffer = nullptr;
                 m_swapchain_texture = nullptr;
-                throw std::runtime_error(std::string("SDL_SubmitGPUCommandBuffer failed: ") + SDL_GetError());
+                throw std::runtime_error(std::string("SDL_SubmitGPUCommandBuffer in endFrame failed: ") + SDL_GetError());
             }
             m_command_buffer = nullptr;
         }

@@ -24,6 +24,7 @@ add_executable(main
     src/engine/graphics/Texture.cpp
     src/engine/graphics/GraphicsPipeline.cpp
     src/engine/math/Transform.cpp
+    src/engine/math/Math.cpp
     src/engine/scene/Camera.cpp
     src/engine/window/Window.cpp
     src/engine/assets/AssetsManager.cpp

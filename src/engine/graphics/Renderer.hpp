@@ -31,7 +31,7 @@ namespace engine {
             SDL_GPUSampler* defaultSampler() const;
 
             RenderMesh createRenderMesh(const Mesh& mesh);
-            Texture createTexture(const void* pixels, Uint32 width, Uint32 height);
+            Texture createTexture(const void* pixels, Uint32 width, Uint32 height, bool generate_mipmaps = true);
             Cubemap createCubemap(std::array<std::vector<std::uint8_t>, 6>& faces, std::uint32_t size = 0);
 
             void beginRenderPass();
