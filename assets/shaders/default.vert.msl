@@ -1,7 +1,7 @@
 #include <metal_stdlib>
 using namespace metal;
 
-#define SHADOW_CASCADE_COUNT 2
+#define SHADOW_CASCADE_COUNT 4
 
 struct VertexInput
 {
@@ -19,8 +19,11 @@ struct VertexOutput
     float2 uv;
     float4 tangent;
     float viewDepth;
+
     float4 shadowPosition0;
     float4 shadowPosition1;
+    float4 shadowPosition2;
+    float4 shadowPosition3;
 };
 
 struct VertexUniforms
@@ -33,7 +36,6 @@ struct VertexUniforms
 struct ShadowLightUniforms
 {
     float4x4 lightVP[SHADOW_CASCADE_COUNT];
-    float4 cascadeSplits;
 };
 
 vertex VertexOutput main0(
@@ -78,6 +80,8 @@ vertex VertexOutput main0(
 
     output.shadowPosition0 = shadow.lightVP[0] * worldPosition;
     output.shadowPosition1 = shadow.lightVP[1] * worldPosition;
+    output.shadowPosition2 = shadow.lightVP[2] * worldPosition;
+    output.shadowPosition3 = shadow.lightVP[3] * worldPosition;
 
     return output;
 }

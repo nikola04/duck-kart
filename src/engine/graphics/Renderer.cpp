@@ -50,7 +50,7 @@ namespace engine {
             .compareOp = SDL_GPU_COMPAREOP_LESS
         });
 
-        const Uint32 shadowSizes[ShadowCascadeCount] = { 4096, 2048 };
+        const Uint32 shadowSizes[ShadowCascadeCount] = { 4096, 4096, 2048, 1024 };
         for (std::size_t i = 0; i < ShadowCascadeCount; ++i)
             m_shadowMaps[i].emplace(m_device, shadowSizes[i], shadowSizes[i]);
 
@@ -419,32 +419,24 @@ namespace engine {
     }
 
     void Renderer::render(const Scene& scene) {
-        const float splits[ShadowCascadeCount] = { 50.0f, 250.0f };
-        const float extents[ShadowCascadeCount] = { 50.0f, 250.0f };
+        const float splits[ShadowCascadeCount] = { 30.0f, 80.0f, 200.0f, 500.0f };
+        const float sizes[ShadowCascadeCount] = { 4096.0f, 4096.0f, 2048.0f, 1024.0f };
 
-        glm::vec3 camPos = scene.camera.transform.position;
-        glm::vec3 forward = scene.camera.transform.forward();
+        float aspect = static_cast<float>(m_window.width()) / static_cast<float>(m_window.height());
+
+        float cascadeNear = 0.1f;
 
         for (std::size_t i = 0; i < ShadowCascadeCount; i++) {
-            float nearSplit = (i == 0) ? 0.0f : splits[i - 1];
-            float farSplit = splits[i];
+            float cascadeFar = splits[i];
 
-            float centerDistance = (nearSplit + farSplit) * 0.5f;
-            glm::vec3 target = camPos + forward * centerDistance;
-
-            m_shadowCameras[i].update(
-                scene.sun,
-                target,
-                extents[i],
-                static_cast<float>(m_shadowMaps[i]->width())
-            );
+            m_shadowCameras[i].updateFromFrustumSlice(scene.sun, scene.camera, cascadeNear, cascadeFar, aspect, sizes[i]);
 
             beginShadowPass(i);
-
             for (const auto& object : scene.objects)
                 drawShadow(*object.mesh, object.transform, i);
-
             endShadowPass();
+
+            cascadeNear = cascadeFar;
         }
 
         beginRenderPass();
@@ -523,7 +515,6 @@ namespace engine {
         for (std::size_t i = 0; i < ShadowCascadeCount; ++i) {
             shadow_uniforms.lightVP[i] = m_shadowCameras[i].projection() * m_shadowCameras[i].view();
         }
-        shadow_uniforms.cascadeSplits = glm::vec4(50.0f, 0.0f, 0.0f, 0.0f);
         SDL_PushGPUVertexUniformData(m_command_buffer, 1, &shadow_uniforms, sizeof(ShadowLightUniforms));
 
         MaterialUniforms material_uniforms{};
@@ -532,7 +523,8 @@ namespace engine {
         SDL_PushGPUFragmentUniformData(m_command_buffer, 0, &material_uniforms, sizeof(MaterialUniforms));
 
         CameraUniforms camera_uniforms{};
-        camera_uniforms.position = glm::vec4{camera.transform.position, 50.0f};
+        camera_uniforms.position = glm::vec4{camera.transform.position, 1.0f};
+        camera_uniforms.cascadeSplits = glm::vec4(30.0f, 80.0f, 200.0f, 500.0f);
         SDL_PushGPUFragmentUniformData(m_command_buffer, 1, &camera_uniforms, sizeof(CameraUniforms));
         SDL_PushGPUFragmentUniformData(m_command_buffer, 2, &light, sizeof(DirectionalLight));
         SDL_PushGPUFragmentUniformData(m_command_buffer, 3, &pointLights, sizeof(PointLightUniforms));

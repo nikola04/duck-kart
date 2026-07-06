@@ -11,6 +11,8 @@ struct FragmentInput
     float viewDepth;
     float4 shadowPosition0;
     float4 shadowPosition1;
+    float4 shadowPosition2;
+    float4 shadowPosition3;
 };
 
 struct MaterialUniforms
@@ -29,6 +31,7 @@ struct LightUniforms
 struct CameraUniforms
 {
     float4 position;
+    float4 cascadeSplits;
 };
 
 #define MAX_POINT_LIGHTS 8
@@ -99,11 +102,15 @@ fragment float4 main0(
     texture2d<float> normalTexture [[texture(1)]],
     depth2d<float> shadowMap0 [[texture(2)]],
     depth2d<float> shadowMap1 [[texture(3)]],
+    depth2d<float> shadowMap2 [[texture(4)]],
+    depth2d<float> shadowMap3 [[texture(5)]],
 
     sampler baseSampler [[sampler(0)]],
     sampler normalSampler [[sampler(1)]],
     sampler shadowSampler0 [[sampler(2)]],
-    sampler shadowSampler1 [[sampler(3)]]
+    sampler shadowSampler1 [[sampler(3)]],
+    sampler shadowSampler2 [[sampler(4)]],
+    sampler shadowSampler3 [[sampler(5)]]
 )
 {
     float3 N = normalize(input.normal);
@@ -152,28 +159,21 @@ fragment float4 main0(
 
     float shadow;
 
-    // The cascade split is packed into position.w. Using position.x here
-    // compares view-space depth against the camera's world-space X position,
-    // making the cascade boundary move and resize as the camera moves.
-    if (input.viewDepth <= camera.position.w)
+    if (input.viewDepth <= camera.cascadeSplits.x)
     {
-        shadow = calculateShadow(
-            input.shadowPosition0,
-            normal,
-            lightDir,
-            shadowMap0,
-            shadowSampler0
-        );
+        shadow = calculateShadow(input.shadowPosition0, normal, lightDir, shadowMap0, shadowSampler0);
+    }
+    else if (input.viewDepth <= camera.cascadeSplits.y)
+    {
+        shadow = calculateShadow(input.shadowPosition1, normal, lightDir, shadowMap1, shadowSampler1);
+    }
+    else if (input.viewDepth <= camera.cascadeSplits.z)
+    {
+        shadow = calculateShadow(input.shadowPosition2, normal, lightDir, shadowMap2, shadowSampler2);
     }
     else
     {
-        shadow = calculateShadow(
-            input.shadowPosition1,
-            normal,
-            lightDir,
-            shadowMap1,
-            shadowSampler1
-        );
+        shadow = calculateShadow(input.shadowPosition3, normal, lightDir, shadowMap3, shadowSampler3);
     }
 
     float3 directLight =

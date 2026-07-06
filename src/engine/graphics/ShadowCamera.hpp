@@ -13,6 +13,15 @@ namespace engine {
                 float shadowMapSize
             );
 
+            void updateFromFrustumSlice(
+                const DirectionalLight& light,
+                const Camera& camera,
+                float nearPlane,
+                float farPlane,
+                float aspect,
+                float shadowMapSize
+            );
+
             const glm::mat4& view() const;
             const glm::mat4& projection() const;
 

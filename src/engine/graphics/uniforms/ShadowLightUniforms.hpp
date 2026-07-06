@@ -6,6 +6,5 @@
 namespace engine {
     struct ShadowLightUniforms {
         glm::mat4 lightVP[ShadowCascadeCount];
-        glm::vec4 cascadeSplits;
     };
 }
