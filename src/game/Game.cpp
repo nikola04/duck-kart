@@ -19,6 +19,7 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
     // m_scene.addModel(m_assets.loadModel("assets/models/sample.glb", transform));
 
 
+    m_scene.camera.fov = 90;
     m_scene.skybox.cubemap = m_assets.loadCubemap("assets/skyboxes/day");
     m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track.glb", {}));
 }

@@ -6,7 +6,12 @@
 namespace engine {
     class ShadowCamera {
         public:
-            void update(const DirectionalLight& light, const glm::vec3& target);
+            void update(
+                const DirectionalLight& light,
+                const glm::vec3& target,
+                float halfExtent,
+                float shadowMapSize
+            );
 
             const glm::mat4& view() const;
             const glm::mat4& projection() const;

@@ -8,7 +8,9 @@ struct FragmentInput
     float3 normal;
     float2 uv;
     float4 tangent;
-    float4 shadowPosition;
+    float viewDepth;
+    float4 shadowPosition0;
+    float4 shadowPosition1;
 };
 
 struct MaterialUniforms
@@ -44,6 +46,48 @@ struct PointLightUniforms
     PointLight lights[MAX_POINT_LIGHTS];
 };
 
+float calculateShadow(
+    float4 shadowPosition,
+    float3 normal,
+    float3 lightDir,
+    depth2d<float> shadowMap,
+    sampler shadowSampler)
+{
+    float3 shadowCoord = shadowPosition.xyz / shadowPosition.w;
+
+    shadowCoord.x = shadowCoord.x * 0.5 + 0.5;
+    shadowCoord.y = 0.5 - shadowCoord.y * 0.5;
+
+    if (shadowCoord.x < 0.0 || shadowCoord.x > 1.0 ||
+        shadowCoord.y < 0.0 || shadowCoord.y > 1.0 ||
+        shadowCoord.z < 0.0 || shadowCoord.z > 1.0)
+    {
+        return 1.0;
+    }
+
+    float bias = max(0.0005, 0.005 * (1.0 - dot(normal, lightDir)));
+
+    float2 texelSize = 1.0 / float2(shadowMap.get_width(), shadowMap.get_height());
+
+    float occlusion = 0.0;
+
+    for (int x = -1; x <= 1; x++)
+    {
+        for (int y = -1; y <= 1; y++)
+        {
+            float2 offset = float2(x, y) * texelSize;
+            float closestDepth = shadowMap.sample(shadowSampler, shadowCoord.xy + offset);
+
+            if (shadowCoord.z - bias > closestDepth)
+                occlusion += 1.0;
+        }
+    }
+
+    occlusion /= 9.0;
+
+    return mix(1.0, 0.35, occlusion);
+}
+
 fragment float4 main0(
     FragmentInput input [[stage_in]],
     constant MaterialUniforms& material [[buffer(0)]],
@@ -53,11 +97,13 @@ fragment float4 main0(
 
     texture2d<float> baseTexture [[texture(0)]],
     texture2d<float> normalTexture [[texture(1)]],
-    depth2d<float> shadowMap [[texture(2)]],
+    depth2d<float> shadowMap0 [[texture(2)]],
+    depth2d<float> shadowMap1 [[texture(3)]],
 
     sampler baseSampler [[sampler(0)]],
     sampler normalSampler [[sampler(1)]],
-    sampler shadowSampler [[sampler(2)]]
+    sampler shadowSampler0 [[sampler(2)]],
+    sampler shadowSampler1 [[sampler(3)]]
 )
 {
     float3 N = normalize(input.normal);
@@ -104,41 +150,30 @@ fragment float4 main0(
     }
     float3 baseColor = texColor.rgb * material.baseColor.rgb;
 
-    float3 shadowCoord = input.shadowPosition.xyz / input.shadowPosition.w;
+    float shadow;
 
-    shadowCoord.x = shadowCoord.x * 0.5 + 0.5;
-    shadowCoord.y = 0.5 - shadowCoord.y * 0.5;
-
-    float2 texelSize = 1.0 / float2(shadowMap.get_width(), shadowMap.get_height());
-    float shadow = 1.0;
-
-    if (shadowCoord.x >= 0.0 && shadowCoord.x <= 1.0 &&
-        shadowCoord.y >= 0.0 && shadowCoord.y <= 1.0 &&
-        shadowCoord.z >= 0.0 && shadowCoord.z <= 1.0)
+    // The cascade split is packed into position.w. Using position.x here
+    // compares view-space depth against the camera's world-space X position,
+    // making the cascade boundary move and resize as the camera moves.
+    if (input.viewDepth <= camera.position.w)
     {
-        shadow /= 9;
-        shadow = mix(1.0, 0.35, shadow);
-        float closestDepth = shadowMap.sample(shadowSampler, shadowCoord.xy);
-        float currentDepth = shadowCoord.z;
-
-        float bias = max(0.0005, 0.005 * (1.0 - dot(normal, lightDir)));
-
-        for (int x = -1; x <= 1; x++)
-        {
-            for (int y = -1; y <= 1; y++)
-            {
-                float2 offset = float2(x, y) * texelSize;
-
-                float closestDepth =
-                    shadowMap.sample(shadowSampler, shadowCoord.xy + offset);
-
-                shadow += (currentDepth - bias > closestDepth) ? 1.0 : 0.0;
-            }
-        }
-
-        shadow /= 9.0;
-
-        shadow = mix(1.0, 0.35, shadow);
+        shadow = calculateShadow(
+            input.shadowPosition0,
+            normal,
+            lightDir,
+            shadowMap0,
+            shadowSampler0
+        );
+    }
+    else
+    {
+        shadow = calculateShadow(
+            input.shadowPosition1,
+            normal,
+            lightDir,
+            shadowMap1,
+            shadowSampler1
+        );
     }
 
     float3 directLight =
@@ -176,7 +211,6 @@ fragment float4 main0(
             baseColor * pointLight.color.rgb * pointDiffuse * intensity * attenuation +
             pointLight.color.rgb * pointSpecular * intensity * attenuation;
     }
-
 
     return float4(finalColor, texColor.a * material.baseColor.a);
 }

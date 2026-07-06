@@ -1,6 +1,8 @@
 #include <metal_stdlib>
 using namespace metal;
 
+#define SHADOW_CASCADE_COUNT 2
+
 struct VertexInput
 {
     float3 position [[attribute(0)]];
@@ -16,14 +18,9 @@ struct VertexOutput
     float3 normal;
     float2 uv;
     float4 tangent;
-    float4 shadowPosition;
-};
-
-struct ShadowLightUniforms
-{
-    float4x4 lightView;
-    float4x4 lightProjection;
-    float4x4 lightVP;
+    float viewDepth;
+    float4 shadowPosition0;
+    float4 shadowPosition1;
 };
 
 struct VertexUniforms
@@ -31,6 +28,12 @@ struct VertexUniforms
     float4x4 model;
     float4x4 view;
     float4x4 projection;
+};
+
+struct ShadowLightUniforms
+{
+    float4x4 lightVP[SHADOW_CASCADE_COUNT];
+    float4 cascadeSplits;
 };
 
 vertex VertexOutput main0(
@@ -41,15 +44,12 @@ vertex VertexOutput main0(
 {
     VertexOutput output;
 
-    float4 worldPosition =
-        uniforms.model * float4(input.position, 1.0);
+    float4 worldPosition = uniforms.model * float4(input.position, 1.0);
+    float4 viewPosition = uniforms.view * worldPosition;
 
-    output.position =
-        uniforms.projection *
-        uniforms.view *
-        worldPosition;
-
+    output.position = uniforms.projection * viewPosition;
     output.worldPosition = worldPosition.xyz;
+    output.viewDepth = -viewPosition.z;
 
     float3x3 modelMatrix = float3x3(
         uniforms.model[0].xyz,
@@ -75,7 +75,9 @@ vertex VertexOutput main0(
     output.normal = N;
     output.uv = input.uv;
     output.tangent = float4(T, input.tangent.w);
-    output.shadowPosition = shadow.lightVP * worldPosition;
+
+    output.shadowPosition0 = shadow.lightVP[0] * worldPosition;
+    output.shadowPosition1 = shadow.lightVP[1] * worldPosition;
 
     return output;
 }
