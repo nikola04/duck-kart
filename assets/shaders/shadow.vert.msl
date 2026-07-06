@@ -1,0 +1,40 @@
+#include <metal_stdlib>
+using namespace metal;
+
+struct VertexInput
+{
+    float3 position [[attribute(0)]];
+    float3 normal   [[attribute(1)]];
+    float2 uv       [[attribute(2)]];
+    float4 tangent  [[attribute(3)]];
+};
+
+struct ShadowVertexUniforms
+{
+    float4x4 model;
+    float4x4 lightView;
+    float4x4 lightProjection;
+};
+
+struct VertexOutput
+{
+    float4 position [[position]];
+};
+
+vertex VertexOutput main0(
+    VertexInput in [[stage_in]],
+    constant ShadowVertexUniforms& uniforms [[buffer(0)]])
+{
+    VertexOutput out;
+
+    float4 worldPosition =
+        uniforms.model *
+        float4(in.position, 1.0);
+
+    out.position =
+        uniforms.lightProjection *
+        uniforms.lightView *
+        worldPosition;
+
+    return out;
+}

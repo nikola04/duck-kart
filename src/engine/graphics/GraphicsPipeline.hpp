@@ -9,6 +9,8 @@ namespace engine {
         SDL_GPUTextureFormat depthFormat;
 
         int fragmentSamplers = 0;
+        int vertexUniformBuffers = 1;
+        int fragmentUniformBuffers = 4;
 
         bool depthTest = true;
         bool depthWrite = true;

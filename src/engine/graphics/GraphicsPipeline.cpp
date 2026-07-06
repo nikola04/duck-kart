@@ -5,8 +5,8 @@
 
 namespace engine {
     GraphicsPipeline::GraphicsPipeline(SDL_GPUDevice* device, const std::filesystem::path& vertex, const std::filesystem::path& fragment, GraphicsPipelineInfo info): m_device(device) {
-        Shader vertex_shader(m_device, vertex, ShaderStage::Vertex);
-        Shader fragment_shader(m_device, fragment, ShaderStage::Fragment, info.fragmentSamplers);
+        Shader vertex_shader(m_device, vertex, ShaderStage::Vertex, 0, info.vertexUniformBuffers);
+        Shader fragment_shader(m_device, fragment, ShaderStage::Fragment, info.fragmentSamplers, info.fragmentUniformBuffers);
 
         SDL_GPUVertexInputState vertex_input_state = VertexLayout<Vertex>::create();
 
@@ -18,9 +18,16 @@ namespace engine {
         pipeline_info.fragment_shader = fragment_shader.handle();
         pipeline_info.vertex_input_state = vertex_input_state;
         pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
-        pipeline_info.target_info.num_color_targets = 1;
-        pipeline_info.target_info.color_target_descriptions = &color_target_desc;
         pipeline_info.target_info.has_depth_stencil_target = true;
+
+        if (info.colorFormat != SDL_GPU_TEXTUREFORMAT_INVALID) {
+            color_target_desc.format = info.colorFormat;
+            pipeline_info.target_info.num_color_targets = 1;
+            pipeline_info.target_info.color_target_descriptions = &color_target_desc;
+        } else {
+            pipeline_info.target_info.num_color_targets = 0;
+            pipeline_info.target_info.color_target_descriptions = nullptr;
+        }
 
         pipeline_info.target_info.depth_stencil_format = info.depthFormat;
         pipeline_info.depth_stencil_state.enable_depth_test = info.depthTest;

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(3DGame)
+project(DuckKart)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,7 +8,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
 find_package(glm REQUIRED)
-# find_package(tinygltf REQUIRED)
 
 add_executable(main
     src/main.cpp
@@ -23,6 +22,8 @@ add_executable(main
     src/engine/graphics/GPUTexture.cpp
     src/engine/graphics/Texture.cpp
     src/engine/graphics/GraphicsPipeline.cpp
+    src/engine/graphics/ShadowMap.cpp
+    src/engine/graphics/ShadowCamera.cpp
     src/engine/math/Transform.cpp
     src/engine/math/Math.cpp
     src/engine/scene/Camera.cpp

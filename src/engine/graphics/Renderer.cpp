@@ -1,12 +1,14 @@
 #include "Renderer.hpp"
 #include "uniforms/CameraUniforms.hpp"
 #include "uniforms/MaterialUniforms.hpp"
+#include "uniforms/ShadowLightUniforms.hpp"
+#include "uniforms/ShadowVertexUniforms.hpp"
 #include "uniforms/VertexUniforms.hpp"
 #include "../math/Math.hpp"
 #include <SDL3/SDL_gpu.h>
 
 namespace engine {
-    Renderer::Renderer(Window& window): m_window(window) {
+    Renderer::Renderer(Window& window): m_window(window), m_shadowCamera() {
         m_device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_MSL, true, nullptr);
         if (!m_device)
             throw std::runtime_error(std::string("SDL_CreateGPUDevice failed: ") + SDL_GetError());
@@ -17,17 +19,34 @@ namespace engine {
         m_mainPipeline.emplace(m_device, "assets/shaders/default.vert.msl", "assets/shaders/default.frag.msl", GraphicsPipelineInfo{
             .colorFormat = SDL_GetGPUSwapchainTextureFormat(m_device, m_window.handle()),
             .depthFormat = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
-            .fragmentSamplers = 2
+            .fragmentSamplers = 3,
+            .vertexUniformBuffers = 2,
+            .fragmentUniformBuffers = 4
         });
 
         m_skyboxPipeline.emplace(m_device, "assets/shaders/skybox.vert.msl", "assets/shaders/skybox.frag.msl", GraphicsPipelineInfo{
             .colorFormat = SDL_GetGPUSwapchainTextureFormat(m_device, m_window.handle()),
             .depthFormat = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
             .fragmentSamplers = 1,
+            .vertexUniformBuffers = 1,
+            .fragmentUniformBuffers = 0,
             .depthTest = true,
             .depthWrite = false,
-            .compareOp = SDL_GPU_COMPAREOP_LESS_OR_EQUAL
+            .compareOp = SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
         });
+
+        m_shadowPipeline.emplace(m_device, "assets/shaders/shadow.vert.msl", "assets/shaders/shadow.frag.msl", GraphicsPipelineInfo{
+            .colorFormat = SDL_GPU_TEXTUREFORMAT_INVALID,
+            .depthFormat = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+            .fragmentSamplers = 0,
+            .vertexUniformBuffers = 1,
+            .fragmentUniformBuffers = 0,
+            .depthTest = true,
+            .depthWrite = true,
+            .compareOp = SDL_GPU_COMPAREOP_LESS
+        });
+
+        m_shadowMap.emplace(m_device, 2048, 2048);
 
         SDL_GPUSamplerCreateInfo sampler_info{};
         sampler_info.min_filter = SDL_GPU_FILTER_LINEAR;
@@ -81,11 +100,13 @@ namespace engine {
 
         SDL_WaitForGPUIdle(m_device);
         m_skyboxMesh.reset();
+        m_shadowMap.reset();
         m_white_texture.reset();
         m_default_normal_texture.reset();
 
         m_mainPipeline.reset();
         m_skyboxPipeline.reset();
+        m_shadowPipeline.reset();
 
         if (m_depth_texture) {
             SDL_ReleaseGPUTexture(m_device, m_depth_texture);
@@ -372,6 +393,14 @@ namespace engine {
     }
 
     void Renderer::render(const Scene& scene) {
+        m_shadowCamera.update(scene.sun,  scene.camera.transform.position + scene.camera.transform.forward() * 40.0f);
+        beginShadowPass();
+        for (const auto& object : scene.objects) {
+            drawShadow(*object.mesh, object.transform);
+        }
+        endShadowPass();
+
+        beginRenderPass();
         PointLightUniforms pointLightUniforms{};
         std::size_t count = std::min(scene.pointLights.size(), static_cast<std::size_t>(MaxPointLights));
         pointLightUniforms.count.x = static_cast<float>(count);
@@ -383,6 +412,7 @@ namespace engine {
             draw(*object.mesh, object.transform, scene.camera, *object.material, scene.sun, pointLightUniforms);
 
         drawSkybox(scene.skybox, scene.camera);
+        endRenderPass();
     }
 
     void Renderer::drawSkybox(const Skybox& skybox, const Camera& camera) {
@@ -442,6 +472,12 @@ namespace engine {
         uniforms.projection = camera.projectionMatrix(aspect_ration);
         SDL_PushGPUVertexUniformData(m_command_buffer, 0, &uniforms, sizeof(VertexUniforms));
 
+        ShadowLightUniforms shadow_uniforms{};
+        shadow_uniforms.lightView = m_shadowCamera.view();
+        shadow_uniforms.lightProjection = m_shadowCamera.projection();
+        shadow_uniforms.lightVP = m_shadowCamera.projection() * m_shadowCamera.view();
+        SDL_PushGPUVertexUniformData(m_command_buffer, 1, &shadow_uniforms, sizeof(ShadowLightUniforms));
+
         MaterialUniforms material_uniforms{};
         material_uniforms.base_color = material.baseColor;
         material_uniforms.properties = { material.metallic, material.roughness, material.alphaCutoff, material.alphaMode };
@@ -477,9 +513,10 @@ namespace engine {
         SDL_GPUTextureSamplerBinding bindings[] = {
             { .texture = texture_to_bind->handle(), .sampler = m_default_sampler },
             { .texture = normal_texture_to_bind->handle(), .sampler = m_default_sampler },
+            { .texture = m_shadowMap->texture(), .sampler = m_default_sampler }
         };
 
-        SDL_BindGPUFragmentSamplers(m_render_pass, 0, bindings, 2);
+        SDL_BindGPUFragmentSamplers(m_render_pass, 0, bindings, 3);
 
         SDL_DrawGPUIndexedPrimitives(m_render_pass, mesh.indexCount(), 1, 0, 0, 0);
     }
@@ -556,5 +593,62 @@ namespace engine {
             m_command_buffer = nullptr;
         }
         m_swapchain_texture = nullptr;
+    }
+
+    void Renderer::beginShadowPass() {
+        if (!m_command_buffer)
+            return;
+
+        if (m_shadow_render_pass)
+            throw std::logic_error("Renderer::beginShadowPass called while a render pass is active");
+
+        SDL_GPUDepthStencilTargetInfo depth_target{};
+        depth_target.texture = m_shadowMap->texture();
+        depth_target.clear_depth = 1.0f;
+        depth_target.load_op = SDL_GPU_LOADOP_CLEAR;
+        depth_target.store_op = SDL_GPU_STOREOP_STORE;
+        depth_target.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE;
+        depth_target.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE;
+
+        m_shadow_render_pass = SDL_BeginGPURenderPass(m_command_buffer, nullptr, 0, &depth_target);
+
+        if (!m_shadow_render_pass) throw std::runtime_error(std::string("SDL_BeginGPURenderPass in beginShadowPass failed: ") + SDL_GetError());
+    }
+
+    void Renderer::endShadowPass() {
+        if (!m_shadow_render_pass)
+            return;
+
+        SDL_EndGPURenderPass(m_shadow_render_pass);
+        m_shadow_render_pass = nullptr;
+    }
+
+    void Renderer::drawShadow(const RenderMesh& mesh, const Transform& transform) {
+        if (!m_shadow_render_pass)
+            throw std::logic_error("Renderer::drawShadow called outside an active shadow pass");
+
+        ShadowVertexUniforms uniforms{};
+
+        uniforms.model = transform.matrix();
+        uniforms.lightView = m_shadowCamera.view();
+        uniforms.lightProjection = m_shadowCamera.projection();
+
+        SDL_PushGPUVertexUniformData(m_command_buffer, 0, &uniforms, sizeof(ShadowVertexUniforms));
+
+        m_shadowPipeline->bind(m_shadow_render_pass);
+
+        SDL_GPUBufferBinding vertexBinding{};
+        vertexBinding.buffer = mesh.vertexBuffer();
+        vertexBinding.offset = 0;
+
+        SDL_BindGPUVertexBuffers(m_shadow_render_pass, 0, &vertexBinding, 1);
+
+        SDL_GPUBufferBinding indexBinding{};
+        indexBinding.buffer = mesh.indexBuffer();
+        indexBinding.offset = 0;
+
+        SDL_BindGPUIndexBuffer(m_shadow_render_pass, &indexBinding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+
+        SDL_DrawGPUIndexedPrimitives(m_shadow_render_pass, mesh.indexCount(), 1, 0, 0, 0);
     }
 }

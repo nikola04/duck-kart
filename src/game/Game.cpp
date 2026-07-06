@@ -20,7 +20,7 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
 
 
     m_scene.skybox.cubemap = m_assets.loadCubemap("assets/skyboxes/day");
-    m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track_free.glb", {}));
+    m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track.glb", {}));
 }
 
 void Game::update(float dt){
@@ -34,7 +34,7 @@ void Game::update(float dt){
     m_scene.camera.transform.rotation.x = std::clamp(m_scene.camera.transform.rotation.x, -maxPitch, maxPitch);
 
     if (input().isKeyDown(SDL_SCANCODE_LCTRL))
-        speed = 20.0f;
+        speed = 30.0f;
     // keyboard movement
     if (input().isKeyDown(SDL_SCANCODE_W))
         m_scene.camera.transform.position += m_scene.camera.transform.forward() * speed * dt;

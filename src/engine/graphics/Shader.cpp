@@ -24,7 +24,7 @@ namespace engine {
         return buffer;
     }
 
-    Shader::Shader(SDL_GPUDevice* device, const std::filesystem::path& path, ShaderStage stage, int samplers): m_device(device) {
+    Shader::Shader(SDL_GPUDevice* device, const std::filesystem::path& path, ShaderStage stage, int samplers, int uniformBuffers): m_device(device) {
         const std::vector<char> code = readFile(path);
 
         SDL_GPUShaderCreateInfo info{};
@@ -36,12 +36,12 @@ namespace engine {
         switch (stage) {
             case engine::ShaderStage::Vertex:
                 info.stage = SDL_GPU_SHADERSTAGE_VERTEX;
-                info.num_uniform_buffers = 1;
+                info.num_uniform_buffers = uniformBuffers;
                 break;
             case engine::ShaderStage::Fragment:
                 info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
                 info.num_samplers = samplers;
-                info.num_uniform_buffers = 4;
+                info.num_uniform_buffers = uniformBuffers;
                 break;
         }
 

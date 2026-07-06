@@ -16,6 +16,14 @@ struct VertexOutput
     float3 normal;
     float2 uv;
     float4 tangent;
+    float4 shadowPosition;
+};
+
+struct ShadowLightUniforms
+{
+    float4x4 lightView;
+    float4x4 lightProjection;
+    float4x4 lightVP;
 };
 
 struct VertexUniforms
@@ -27,7 +35,8 @@ struct VertexUniforms
 
 vertex VertexOutput main0(
     VertexInput input [[stage_in]],
-    constant VertexUniforms& uniforms [[buffer(0)]]
+    constant VertexUniforms& uniforms [[buffer(0)]],
+    constant ShadowLightUniforms& shadow [[buffer(1)]]
 )
 {
     VertexOutput output;
@@ -66,6 +75,7 @@ vertex VertexOutput main0(
     output.normal = N;
     output.uv = input.uv;
     output.tangent = float4(T, input.tangent.w);
+    output.shadowPosition = shadow.lightVP * worldPosition;
 
     return output;
 }

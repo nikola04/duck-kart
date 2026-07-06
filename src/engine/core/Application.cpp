@@ -35,9 +35,7 @@ namespace engine {
                 break;
 
             m_renderer.beginFrame();
-            m_renderer.beginRenderPass();
             render();
-            m_renderer.endRenderPass();
             m_renderer.endFrame();
         }
 

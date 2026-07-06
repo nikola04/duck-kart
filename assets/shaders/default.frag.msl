@@ -8,6 +8,7 @@ struct FragmentInput
     float3 normal;
     float2 uv;
     float4 tangent;
+    float4 shadowPosition;
 };
 
 struct MaterialUniforms
@@ -49,15 +50,20 @@ fragment float4 main0(
     constant CameraUniforms& camera [[buffer(1)]],
     constant LightUniforms& light [[buffer(2)]],
     constant PointLightUniforms& pointLights [[buffer(3)]],
+
     texture2d<float> baseTexture [[texture(0)]],
     texture2d<float> normalTexture [[texture(1)]],
-    sampler baseSampler [[sampler(0)]]
+    depth2d<float> shadowMap [[texture(2)]],
+
+    sampler baseSampler [[sampler(0)]],
+    sampler normalSampler [[sampler(1)]],
+    sampler shadowSampler [[sampler(2)]]
 )
 {
     float3 N = normalize(input.normal);
     float3 T = normalize(input.tangent.xyz);
     float3 B = normalize(cross(T, N) * input.tangent.w);
-    float3 normalSample = normalTexture.sample(baseSampler, input.uv).rgb;
+    float3 normalSample = normalTexture.sample(normalSampler, input.uv).rgb;
 
     normalSample = normalSample * 2.0 - 1.0;
 
@@ -98,10 +104,50 @@ fragment float4 main0(
     }
     float3 baseColor = texColor.rgb * material.baseColor.rgb;
 
-    float3 finalColor =
-        baseColor * light.ambient.rgb +
+    float3 shadowCoord = input.shadowPosition.xyz / input.shadowPosition.w;
+
+    shadowCoord.x = shadowCoord.x * 0.5 + 0.5;
+    shadowCoord.y = 0.5 - shadowCoord.y * 0.5;
+
+    float2 texelSize = 1.0 / float2(shadowMap.get_width(), shadowMap.get_height());
+    float shadow = 1.0;
+
+    if (shadowCoord.x >= 0.0 && shadowCoord.x <= 1.0 &&
+        shadowCoord.y >= 0.0 && shadowCoord.y <= 1.0 &&
+        shadowCoord.z >= 0.0 && shadowCoord.z <= 1.0)
+    {
+        shadow /= 9;
+        shadow = mix(1.0, 0.35, shadow);
+        float closestDepth = shadowMap.sample(shadowSampler, shadowCoord.xy);
+        float currentDepth = shadowCoord.z;
+
+        float bias = max(0.0005, 0.005 * (1.0 - dot(normal, lightDir)));
+
+        for (int x = -1; x <= 1; x++)
+        {
+            for (int y = -1; y <= 1; y++)
+            {
+                float2 offset = float2(x, y) * texelSize;
+
+                float closestDepth =
+                    shadowMap.sample(shadowSampler, shadowCoord.xy + offset);
+
+                shadow += (currentDepth - bias > closestDepth) ? 1.0 : 0.0;
+            }
+        }
+
+        shadow /= 9.0;
+
+        shadow = mix(1.0, 0.35, shadow);
+    }
+
+    float3 directLight =
         baseColor * light.color.rgb * diffuse +
         light.color.rgb * specular;
+
+    float3 finalColor =
+        baseColor * light.ambient.rgb +
+        directLight * shadow;
 
     for (uint i = 0; i < pointLightCount; ++i)
     {
