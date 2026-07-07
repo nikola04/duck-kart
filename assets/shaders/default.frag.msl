@@ -68,7 +68,7 @@ float calculateShadow(
         return 1.0;
     }
 
-    float bias = max(0.0005, 0.005 * (1.0 - dot(normal, lightDir)));
+    float bias = max(0.00005, 0.0005 * (1.0 - dot(normal, lightDir)));
 
     float2 texelSize = 1.0 / float2(shadowMap.get_width(), shadowMap.get_height());
 
