@@ -26,6 +26,7 @@ struct LightUniforms
     float4 direction;
     float4 color;
     float4 ambient;
+    float4 properties;
 };
 
 struct CameraUniforms
@@ -49,12 +50,18 @@ struct PointLightUniforms
     PointLight lights[MAX_POINT_LIGHTS];
 };
 
+float blendFactor(float depth, float split, float blendRange)
+{
+    return saturate((depth - (split - blendRange)) / blendRange);
+}
+
 float calculateShadow(
     float4 shadowPosition,
     float3 normal,
     float3 lightDir,
     depth2d<float> shadowMap,
-    sampler shadowSampler)
+    sampler shadowSampler,
+    float shadowStrength)
 {
     float3 shadowCoord = shadowPosition.xyz / shadowPosition.w;
 
@@ -88,7 +95,7 @@ float calculateShadow(
 
     occlusion /= 9.0;
 
-    return mix(1.0, 0.35, occlusion);
+    return mix(1.0, 1.0 - shadowStrength, occlusion);
 }
 
 fragment float4 main0(
@@ -100,17 +107,19 @@ fragment float4 main0(
 
     texture2d<float> baseTexture [[texture(0)]],
     texture2d<float> normalTexture [[texture(1)]],
-    depth2d<float> shadowMap0 [[texture(2)]],
-    depth2d<float> shadowMap1 [[texture(3)]],
-    depth2d<float> shadowMap2 [[texture(4)]],
-    depth2d<float> shadowMap3 [[texture(5)]],
+    texturecube<float> skyboxTexture [[texture(2)]],
+    depth2d<float> shadowMap0 [[texture(3)]],
+    depth2d<float> shadowMap1 [[texture(4)]],
+    depth2d<float> shadowMap2 [[texture(5)]],
+    depth2d<float> shadowMap3 [[texture(6)]],
 
     sampler baseSampler [[sampler(0)]],
     sampler normalSampler [[sampler(1)]],
-    sampler shadowSampler0 [[sampler(2)]],
-    sampler shadowSampler1 [[sampler(3)]],
-    sampler shadowSampler2 [[sampler(4)]],
-    sampler shadowSampler3 [[sampler(5)]]
+    sampler skyboxSampler [[sampler(2)]],
+    sampler shadowSampler0 [[sampler(3)]],
+    sampler shadowSampler1 [[sampler(4)]],
+    sampler shadowSampler2 [[sampler(5)]],
+    sampler shadowSampler3 [[sampler(6)]]
 )
 {
     float3 N = normalize(input.normal);
@@ -126,6 +135,12 @@ fragment float4 main0(
         N * normalSample.z
     );
     float3 lightDir = normalize(-light.direction.xyz);
+    float sunIntensity = light.properties.x;
+    float shadowStrength = light.properties.y;
+
+    float3 sunColor = light.color.rgb * sunIntensity;
+    float3 ambientColor = light.ambient.rgb;
+
     float3 viewDir = normalize(camera.position.xyz - input.worldPosition);
 
     float diffuse = max(dot(normal, lightDir), 0.0);
@@ -158,30 +173,71 @@ fragment float4 main0(
     float3 baseColor = texColor.rgb * material.baseColor.rgb;
 
     float shadow;
+    float blendRange = 5.0;
 
     if (input.viewDepth <= camera.cascadeSplits.x)
     {
-        shadow = calculateShadow(input.shadowPosition0, normal, lightDir, shadowMap0, shadowSampler0);
+        float shadow0 = calculateShadow(input.shadowPosition0, normal, lightDir, shadowMap0, shadowSampler0, shadowStrength);
+
+        if (input.viewDepth > camera.cascadeSplits.x - blendRange)
+        {
+            float shadow1 = calculateShadow(input.shadowPosition1, normal, lightDir, shadowMap1, shadowSampler1, shadowStrength);
+            float t = blendFactor(input.viewDepth, camera.cascadeSplits.x, blendRange);
+            shadow = mix(shadow0, shadow1, t);
+        }
+        else
+        {
+            shadow = shadow0;
+        }
     }
     else if (input.viewDepth <= camera.cascadeSplits.y)
     {
-        shadow = calculateShadow(input.shadowPosition1, normal, lightDir, shadowMap1, shadowSampler1);
+        float shadow1 = calculateShadow(input.shadowPosition1, normal, lightDir, shadowMap1, shadowSampler1, shadowStrength);
+
+        if (input.viewDepth > camera.cascadeSplits.y - blendRange)
+        {
+            float shadow2 = calculateShadow(input.shadowPosition2, normal, lightDir, shadowMap2, shadowSampler2, shadowStrength);
+            float t = blendFactor(input.viewDepth, camera.cascadeSplits.y, blendRange);
+            shadow = mix(shadow1, shadow2, t);
+        }
+        else
+        {
+            shadow = shadow1;
+        }
     }
     else if (input.viewDepth <= camera.cascadeSplits.z)
     {
-        shadow = calculateShadow(input.shadowPosition2, normal, lightDir, shadowMap2, shadowSampler2);
+        float shadow2 = calculateShadow(input.shadowPosition2, normal, lightDir, shadowMap2, shadowSampler2, shadowStrength);
+
+        if (input.viewDepth > camera.cascadeSplits.z - blendRange)
+        {
+            float shadow3 = calculateShadow(input.shadowPosition3, normal, lightDir, shadowMap3, shadowSampler3, shadowStrength);
+            float t = blendFactor(input.viewDepth, camera.cascadeSplits.z, blendRange);
+            shadow = mix(shadow2, shadow3, t);
+        }
+        else
+        {
+            shadow = shadow2;
+        }
     }
     else
     {
-        shadow = calculateShadow(input.shadowPosition3, normal, lightDir, shadowMap3, shadowSampler3);
+        shadow = calculateShadow(input.shadowPosition3, normal, lightDir, shadowMap3, shadowSampler3, shadowStrength);
     }
 
     float3 directLight =
-        baseColor * light.color.rgb * diffuse +
-        light.color.rgb * specular;
+        baseColor * sunColor * diffuse +
+        sunColor * specular;
+
+    float3 skyAmbient = skyboxTexture.sample(skyboxSampler, normal).rgb;
+
+    float skyIntensity = 0.35;
+
+    float3 indirectLight =
+        baseColor * skyAmbient * skyIntensity;
 
     float3 finalColor =
-        baseColor * light.ambient.rgb +
+        indirectLight +
         directLight * shadow;
 
     for (uint i = 0; i < pointLightCount; ++i)

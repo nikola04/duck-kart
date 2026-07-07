@@ -44,6 +44,7 @@ namespace engine {
                 const Transform& transform,
                 const Camera& camera,
                 const Material& material,
+                const Skybox& skybox,
                 const DirectionalLight& light,
                 const PointLightUniforms& pointLights
             );

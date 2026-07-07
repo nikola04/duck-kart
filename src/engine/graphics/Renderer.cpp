@@ -7,9 +7,7 @@
 #include "uniforms/ShadowVertexUniforms.hpp"
 #include "uniforms/VertexUniforms.hpp"
 #include "../math/Math.hpp"
-#include <SDL3/SDL_gpu.h>
-#include <cstddef>
-#include <optional>
+#include "../math/Frustum.hpp"
 
 namespace engine {
     Renderer::Renderer(Window& window): m_window(window) {
@@ -23,7 +21,7 @@ namespace engine {
         m_mainPipeline.emplace(m_device, "assets/shaders/default.vert.msl", "assets/shaders/default.frag.msl", GraphicsPipelineInfo{
             .colorFormat = SDL_GetGPUSwapchainTextureFormat(m_device, m_window.handle()),
             .depthFormat = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
-            .fragmentSamplers = 2 + ShadowCascadeCount,
+            .fragmentSamplers = 3 + ShadowCascadeCount,
             .vertexUniformBuffers = 2,
             .fragmentUniformBuffers = 4
         });
@@ -415,7 +413,11 @@ namespace engine {
 
         SDL_ReleaseGPUTransferBuffer(m_device, transferBuffer);
 
-        return RenderMesh(m_device, vertexBuffer, indexBuffer, static_cast<std::uint32_t>(indices.size()));
+        AABB bounds;
+        for (const auto& vertex : vertices)
+            bounds.expand(vertex.position);
+
+        return RenderMesh(m_device, vertexBuffer, indexBuffer, static_cast<std::uint32_t>(indices.size()), bounds);
     }
 
     void Renderer::render(const Scene& scene) {
@@ -424,16 +426,31 @@ namespace engine {
 
         float aspect = static_cast<float>(m_window.width()) / static_cast<float>(m_window.height());
 
-        float cascadeNear = 0.1f;
+        constexpr float cascadeOverlap = 10.0f;
 
         for (std::size_t i = 0; i < ShadowCascadeCount; i++) {
+            float cascadeNear = (i == 0) ? 0.1f : splits[i - 1];
             float cascadeFar = splits[i];
 
-            m_shadowCameras[i].updateFromFrustumSlice(scene.sun, scene.camera, cascadeNear, cascadeFar, aspect, sizes[i]);
+            float shadowNear = std::max(0.1f, cascadeNear - cascadeOverlap);
+            float shadowFar = cascadeFar + cascadeOverlap;
+
+            m_shadowCameras[i].updateFromFrustumSlice(scene.sun, scene.camera, shadowNear, shadowFar, aspect, sizes[i]);
 
             beginShadowPass(i);
-            for (const auto& object : scene.objects)
+
+            Frustum shadowFrustum;
+            shadowFrustum.update(m_shadowCameras[i].projection() * m_shadowCameras[i].view());
+
+            for (const auto& object : scene.objects) {
+                AABB worldBounds = object.mesh->bounds().transformed(object.transform.matrix());
+
+                if (!shadowFrustum.intersects(worldBounds))
+                    continue;
+
                 drawShadow(*object.mesh, object.transform, i);
+            }
+
             endShadowPass();
 
             cascadeNear = cascadeFar;
@@ -448,7 +465,7 @@ namespace engine {
             pointLightUniforms.lights[i] = scene.pointLights[i];
 
         for (const auto& object : scene.objects)
-            draw(*object.mesh, object.transform, scene.camera, *object.material, scene.sun, pointLightUniforms);
+            draw(*object.mesh, object.transform, scene.camera, *object.material, scene.skybox, scene.sun, pointLightUniforms);
 
         drawSkybox(scene.skybox, scene.camera);
         endRenderPass();
@@ -499,7 +516,7 @@ namespace engine {
         SDL_DrawGPUIndexedPrimitives(m_render_pass, m_skyboxMesh->indexCount(), 1, 0, 0, 0);
     }
 
-    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Material& material, const DirectionalLight& light, const PointLightUniforms& pointLights) {
+    void Renderer::draw(const RenderMesh& mesh, const Transform& transform, const Camera& camera, const Material& material, const Skybox& skybox, const DirectionalLight& light, const PointLightUniforms& pointLights) {
         if (!m_render_pass)
             throw std::logic_error("Renderer::draw called outside an active render pass");
 
@@ -549,17 +566,18 @@ namespace engine {
         const Texture* texture_to_bind = material.texture ? material.texture : m_white_texture.get();
         const Texture* normal_texture_to_bind = material.normalTexture ? material.normalTexture : m_default_normal_texture.get();
 
-        constexpr std::size_t bindings_count = 2 + ShadowCascadeCount;
+        constexpr std::size_t bindings_count = 3 + ShadowCascadeCount;
         SDL_GPUTextureSamplerBinding bindings[bindings_count] = {
             { .texture = texture_to_bind->handle(), .sampler = m_default_sampler },
             { .texture = normal_texture_to_bind->handle(), .sampler = m_default_sampler },
+            { .texture = skybox.cubemap->handle(), .sampler = m_default_sampler },
         };
 
         std::size_t offset = bindings_count - ShadowCascadeCount;
         for (std::size_t i = 0; i < ShadowCascadeCount; i++)
             bindings[offset + i] = { .texture = m_shadowMaps[i]->texture(), .sampler = m_shadow_sampler };
 
-        SDL_BindGPUFragmentSamplers(m_render_pass, 0, bindings, 2 + ShadowCascadeCount);
+        SDL_BindGPUFragmentSamplers(m_render_pass, 0, bindings, bindings_count);
 
         SDL_DrawGPUIndexedPrimitives(m_render_pass, mesh.indexCount(), 1, 0, 0, 0);
     }

@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include <cstdint>
+#include "../math/AABB.hpp"
 
 namespace engine {
     class RenderMesh {
@@ -10,7 +11,8 @@ namespace engine {
             SDL_GPUDevice* device,
             SDL_GPUBuffer* vertexBuffer,
             SDL_GPUBuffer* indexBuffer,
-            std::uint32_t indexCount
+            std::uint32_t indexCount,
+            const AABB& bounds
         );
 
         ~RenderMesh();
@@ -25,10 +27,14 @@ namespace engine {
         SDL_GPUBuffer* indexBuffer() const;
         std::uint32_t indexCount() const;
 
+        const AABB& bounds() const { return m_bounds; }
+
     private:
         SDL_GPUDevice* m_device = nullptr;
         SDL_GPUBuffer* m_vertexBuffer = nullptr;
         SDL_GPUBuffer* m_indexBuffer = nullptr;
         std::uint32_t m_indexCount = 0;
+
+        AABB m_bounds;
     };
 }

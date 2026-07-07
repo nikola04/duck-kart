@@ -5,12 +5,14 @@ namespace engine {
         SDL_GPUDevice* device,
         SDL_GPUBuffer* vertexBuffer,
         SDL_GPUBuffer* indexBuffer,
-        std::uint32_t indexCount
+        std::uint32_t indexCount,
+        const AABB& bounds
     )
         : m_device(device),
           m_vertexBuffer(vertexBuffer),
           m_indexBuffer(indexBuffer),
-          m_indexCount(indexCount)
+          m_indexCount(indexCount),
+          m_bounds(bounds)
     {}
 
     RenderMesh::~RenderMesh() {
