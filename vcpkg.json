@@ -1,3 +1,8 @@
 {
-    "dependencies": ["sdl3", "glm", "tinygltf"]
+  "dependencies": [
+    "glm",
+    "sdl3",
+    "tinygltf",
+    "sdl3-ttf"
+  ]
 }

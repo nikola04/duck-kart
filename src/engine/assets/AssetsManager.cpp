@@ -14,7 +14,7 @@ namespace engine {
         if (auto* mesh = getRenderMesh(name))
             return mesh;
 
-        auto render_mesh = std::make_unique<RenderMesh>(m_renderer.createRenderMesh(mesh));
+        auto render_mesh = std::make_unique<RenderMesh>(m_renderer.resources().createRenderMesh(mesh));
         RenderMesh* ptr = render_mesh.get();
 
         m_render_meshes.emplace(name, std::move(render_mesh));
@@ -39,7 +39,7 @@ namespace engine {
         if (auto* texture = getTexture(name))
             return texture;
 
-        auto texture = std::make_unique<engine::Texture>(m_renderer.createTexture(loadedTexture.pixels.data(), loadedTexture.width, loadedTexture.height));
+        auto texture = std::make_unique<engine::Texture>(m_renderer.resources().createTexture(loadedTexture.pixels.data(), loadedTexture.width, loadedTexture.height));
         Texture *ptr = texture.get();
 
         m_textures.emplace(name, std::move(texture));
@@ -139,7 +139,7 @@ namespace engine {
             stbi_image_free(data);
         }
 
-        auto cubemap = std::make_unique<Cubemap>(m_renderer.createCubemap(faces, static_cast<uint32_t>(size)));
+        auto cubemap = std::make_unique<Cubemap>(m_renderer.resources().createCubemap(faces, static_cast<uint32_t>(size)));
         const Cubemap* ptr = cubemap.get();
 
         m_cubemaps.emplace(folder.generic_string(), std::move(cubemap));

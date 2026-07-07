@@ -1,0 +1,21 @@
+#include <metal_stdlib>
+using namespace metal;
+
+struct FragmentInput {
+    float4 position [[position]];
+    float2 uv;
+};
+
+struct ColorUniforms {
+    float4 color;
+};
+
+fragment float4 main0(
+    FragmentInput input [[stage_in]],
+    constant ColorUniforms& uniforms [[buffer(0)]],
+    texture2d<float> textTexture [[texture(0)]],
+    sampler textSampler [[sampler(0)]]
+) {
+    float4 tex = textTexture.sample(textSampler, input.uv);
+    return float4(uniforms.color.rgb, uniforms.color.a * tex.a);
+}

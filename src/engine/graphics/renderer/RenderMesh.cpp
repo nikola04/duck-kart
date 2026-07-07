@@ -27,7 +27,8 @@ namespace engine {
         : m_device(other.m_device),
           m_vertexBuffer(other.m_vertexBuffer),
           m_indexBuffer(other.m_indexBuffer),
-          m_indexCount(other.m_indexCount)
+          m_indexCount(other.m_indexCount),
+          m_bounds(other.m_bounds)
     {
         other.m_device = nullptr;
         other.m_vertexBuffer = nullptr;
@@ -49,6 +50,7 @@ namespace engine {
         m_vertexBuffer = other.m_vertexBuffer;
         m_indexBuffer = other.m_indexBuffer;
         m_indexCount = other.m_indexCount;
+        m_bounds = other.m_bounds;
 
         other.m_device = nullptr;
         other.m_vertexBuffer = nullptr;

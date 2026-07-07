@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
 find_package(glm REQUIRED)
+find_package(SDL3_ttf CONFIG REQUIRED)
 
 add_executable(main
     src/main.cpp
@@ -17,13 +18,20 @@ add_executable(main
     src/engine/core/Input.cpp
     src/engine/graphics/Renderer.cpp
     src/engine/graphics/Mesh.cpp
-    src/engine/graphics/RenderMesh.cpp
+    src/engine/graphics/renderer/RenderMesh.cpp
+    src/engine/graphics/renderer/RendererGeometry.cpp
+    src/engine/graphics/renderer/RendererResources.cpp
+    src/engine/graphics/renderer/SceneRenderer.cpp
+    src/engine/graphics/renderer/ShadowRenderer.cpp
+    src/engine/graphics/renderer/UIRenderer.cpp
     src/engine/graphics/Shader.cpp
     src/engine/graphics/GPUTexture.cpp
     src/engine/graphics/Texture.cpp
+    src/engine/graphics/TextTexture.cpp
     src/engine/graphics/GraphicsPipeline.cpp
     src/engine/graphics/ShadowMap.cpp
     src/engine/graphics/ShadowCamera.cpp
+    src/engine/graphics/Font.cpp
     src/engine/math/Transform.cpp
     src/engine/math/Math.cpp
     src/engine/math/Frustum.cpp
@@ -36,7 +44,7 @@ add_executable(main
     src/game/meshes/PyramidMesh.cpp
 )
 
-target_link_libraries(main PRIVATE SDL3::SDL3 glm::glm)
+target_link_libraries(main PRIVATE SDL3::SDL3 SDL3_ttf::SDL3_ttf glm::glm)
 
 find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
 target_include_directories(main PRIVATE ${TINYGLTF_INCLUDE_DIRS})

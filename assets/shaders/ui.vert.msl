@@ -1,0 +1,39 @@
+#include <metal_stdlib>
+using namespace metal;
+
+struct VertexInput {
+    float3 position [[attribute(0)]];
+    float2 uv       [[attribute(2)]];
+};
+
+struct VertexOutput {
+    float4 position [[position]];
+    float2 uv;
+};
+
+struct UIUniforms {
+    float2 screenSize;
+    float2 position;
+    float2 size;
+    float2 padding;
+};
+
+vertex VertexOutput main0(
+    VertexInput input [[stage_in]],
+    constant UIUniforms& uniforms [[buffer(0)]]
+) {
+    VertexOutput out;
+
+    float2 pixelPos =
+        uniforms.position +
+        input.position.xy * uniforms.size;
+
+    float2 ndc;
+    ndc.x = pixelPos.x / uniforms.screenSize.x * 2.0 - 1.0;
+    ndc.y = 1.0 - pixelPos.y / uniforms.screenSize.y * 2.0;
+
+    out.position = float4(ndc, 0.0, 1.0);
+    out.uv = input.uv;
+
+    return out;
+}

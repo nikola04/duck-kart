@@ -1,5 +1,6 @@
 #include "Application.hpp"
 #include <SDL3/SDL.h>
+#include <iostream>
 
 namespace engine {
     Application::Application(): m_context(), m_window(WindowSettings{
@@ -33,10 +34,37 @@ namespace engine {
 
             if (!m_running)
                 break;
+            auto t0 = SDL_GetPerformanceCounter();
 
-            m_renderer.beginFrame();
+            if(!m_renderer.beginFrame()) continue;
+
+            auto t1 = SDL_GetPerformanceCounter();
+
             render();
+
+            auto t2 = SDL_GetPerformanceCounter();
+
             m_renderer.endFrame();
+
+            auto t3 = SDL_GetPerformanceCounter();
+
+            double freq = (double)SDL_GetPerformanceFrequency();
+
+            double acquireMs = (t1 - t0) * 1000.0 / freq;
+            double renderMs  = (t2 - t1) * 1000.0 / freq;
+            double submitMs  = (t3 - t2) * 1000.0 / freq;
+
+            static float timer = 0.0f;
+            timer += dt;
+
+            if (timer >= 1.0f) {
+                timer = 0.0f;
+
+                std::cout << std::fixed << std::setprecision(3)
+                          << "Acquire: " << acquireMs << " ms | "
+                          << "Render: "  << renderMs  << " ms | "
+                          << "Submit: "  << submitMs  << " ms\n";
+            }
         }
 
         return 0;

@@ -246,7 +246,38 @@ namespace engine {
         return result;
     }
 
-    static void processNode(const tinygltf::Model& model, int nodeIndex, const glm::mat4& parentTransform, LoadedModel& loadedModel) {
+    // static void processNode(const tinygltf::Model& model, int nodeIndex, const glm::mat4& parentTransform, LoadedModel& loadedModel) {
+    //     const tinygltf::Node& node = model.nodes[nodeIndex];
+    //     glm::mat4 globalTransform = parentTransform * nodeMatrix(node);
+
+    //     if (node.mesh >= 0) {
+    //         const tinygltf::Mesh& mesh = model.meshes[node.mesh];
+
+    //         for (const auto& primitive : mesh.primitives) {
+    //             LoadedMesh loadedMesh{
+    //                 .mesh = Mesh{
+    //                     loadVertices(model, primitive, globalTransform),
+    //                     loadIndices(model, primitive)
+    //                 },
+    //                 .material = primitive.material
+    //             };
+
+    //             std::cout << "mesh " << loadedModel.meshes.size() << " material " << primitive.material << std::endl;
+
+    //             loadedModel.meshes.push_back(std::move(loadedMesh));
+    //         }
+    //     }
+
+    //     for (int child : node.children)
+    //         processNode(model, child, globalTransform, loadedModel);
+    // }
+
+    static void processNodeBatched(
+        const tinygltf::Model& model,
+        int nodeIndex,
+        const glm::mat4& parentTransform,
+        std::unordered_map<int, MeshBatch>& batches
+    ) {
         const tinygltf::Node& node = model.nodes[nodeIndex];
         glm::mat4 globalTransform = parentTransform * nodeMatrix(node);
 
@@ -254,22 +285,30 @@ namespace engine {
             const tinygltf::Mesh& mesh = model.meshes[node.mesh];
 
             for (const auto& primitive : mesh.primitives) {
-                LoadedMesh loadedMesh{
-                    .mesh = Mesh{
-                        loadVertices(model, primitive, globalTransform),
-                        loadIndices(model, primitive)
-                    },
-                    .material = primitive.material
-                };
+                if (primitive.mode != TINYGLTF_MODE_TRIANGLES)
+                    continue;
 
-                std::cout << "mesh " << loadedModel.meshes.size() << " material " << primitive.material << std::endl;
+                int materialIndex = primitive.material;
+                if (materialIndex < 0)
+                    materialIndex = -1;
 
-                loadedModel.meshes.push_back(std::move(loadedMesh));
+                auto vertices = loadVertices(model, primitive, globalTransform);
+                auto indices = loadIndices(model, primitive);
+
+                MeshBatch& batch = batches[materialIndex];
+
+                std::uint32_t baseVertex = static_cast<std::uint32_t>(batch.vertices.size());
+
+                batch.vertices.insert(batch.vertices.end(), vertices.begin(), vertices.end());
+
+                for (std::uint32_t index : indices)
+                    batch.indices.push_back(baseVertex + index);
             }
         }
 
-        for (int child : node.children)
-            processNode(model, child, globalTransform, loadedModel);
+        for (int child : node.children) {
+            processNodeBatched(model, child, globalTransform, batches);
+        }
     }
 
     LoadedModel GLTFLoader::loadModel(const std::filesystem::path& path) {
@@ -300,8 +339,40 @@ namespace engine {
         for (const auto& material : model.materials)
             loadedModel.materials.push_back(loadMaterial(model, material));
 
-        for (int nodeIndex : scene.nodes)
-            processNode(model, nodeIndex, glm::mat4{1.0f}, loadedModel);
+        // for (int nodeIndex : scene.nodes)
+        //     processNode(model, nodeIndex, glm::mat4{1.0f}, loadedModel);
+
+        std::unordered_map<int, MeshBatch> batches;
+
+        for (int nodeIndex : scene.nodes) {
+            processNodeBatched(
+                model,
+                nodeIndex,
+                glm::mat4{1.0f},
+                batches
+            );
+        }
+
+        for (auto& [materialIndex, batch] : batches) {
+            if (batch.vertices.empty() || batch.indices.empty())
+                continue;
+
+            LoadedMesh loadedMesh{
+                .mesh = Mesh{
+                    std::move(batch.vertices),
+                    std::move(batch.indices)
+                },
+                .material = materialIndex
+            };
+
+            std::cout << "batched mesh " << loadedModel.meshes.size()
+                      << " material " << materialIndex
+                      << " vertices " << loadedMesh.mesh.vertices().size()
+                      << " indices " << loadedMesh.mesh.indices().size()
+                      << std::endl;
+
+            loadedModel.meshes.push_back(std::move(loadedMesh));
+        }
 
         return loadedModel;
     }

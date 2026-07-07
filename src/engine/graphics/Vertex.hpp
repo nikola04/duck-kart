@@ -7,6 +7,11 @@
 #include <glm/glm.hpp>
 
 namespace engine {
+    struct UIVertex {
+        glm::vec2 position;
+        glm::vec2 uv;
+    };
+
     struct Vertex {
         glm::vec3 position;
         glm::vec3 normal;

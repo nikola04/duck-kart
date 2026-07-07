@@ -8,19 +8,18 @@
 #include <memory>
 #include <optional>
 #include "../window/Window.hpp"
-#include "../math/Transform.hpp"
-#include "../scene/Camera.hpp"
 #include "../scene/Scene.hpp"
-#include "Cubemap.hpp"
 #include "GraphicsPipeline.hpp"
-#include "Material.hpp"
-#include "Mesh.hpp"
-#include "RenderMesh.hpp"
 #include "ShadowCamera.hpp"
 #include "ShadowConstants.hpp"
 #include "ShadowMap.hpp"
 #include "Texture.hpp"
-#include "uniforms/PointLightUniforms.hpp"
+#include "renderer/RendererResources.hpp"
+#include "renderer/RenderMesh.hpp"
+#include "renderer/SceneRenderer.hpp"
+#include "renderer/ShadowRenderer.hpp"
+#include "renderer/UIRenderer.hpp"
+#include <array>
 
 namespace engine {
     class Renderer {
@@ -33,43 +32,34 @@ namespace engine {
 
             SDL_GPUDevice* device() const;
             SDL_GPUSampler* defaultSampler() const;
+            RendererResources& resources();
 
-            RenderMesh createRenderMesh(const Mesh& mesh);
-            Texture createTexture(const void* pixels, Uint32 width, Uint32 height, bool generate_mipmaps = true);
-            Cubemap createCubemap(std::array<std::vector<std::uint8_t>, 6>& faces, std::uint32_t size = 0);
-
-            void drawShadow(const RenderMesh& mesh, const Transform& transform, std::size_t cascade);
-            void draw(
-                const RenderMesh& mesh,
-                const Transform& transform,
-                const Camera& camera,
-                const Material& material,
-                const Skybox& skybox,
-                const DirectionalLight& light,
-                const PointLightUniforms& pointLights
-            );
-            void drawSkybox(const Skybox& skybox, const Camera& camera);
             void render(const Scene& scene);
 
-            void beginFrame();
+            bool beginFrame();
             void endFrame();
 
         private:
             Window& m_window;
             SDL_GPUDevice* m_device = nullptr;
+            std::optional<RendererResources> m_resources;
+
+            bool m_enableShadows = true;
+            bool m_vsync = true;
 
             std::optional<GraphicsPipeline> m_mainPipeline;
             std::optional<GraphicsPipeline> m_skyboxPipeline;
             std::optional<GraphicsPipeline> m_shadowPipeline;
+            std::optional<GraphicsPipeline> m_uiPipeline;
 
             std::optional<RenderMesh> m_skyboxMesh;
+            std::optional<RenderMesh> m_uiQuadMesh;
 
             std::array<std::optional<ShadowMap>, ShadowCascadeCount> m_shadowMaps;
             std::array<ShadowCamera, ShadowCascadeCount> m_shadowCameras;
 
             SDL_GPUCommandBuffer* m_command_buffer = nullptr;
             SDL_GPUTexture* m_swapchain_texture = nullptr;
-            SDL_GPUTexture* m_depth_texture = nullptr;
             SDL_GPURenderPass* m_render_pass = nullptr;
             SDL_GPURenderPass* m_shadow_render_pass = nullptr;
             SDL_GPUSampler* m_default_sampler = nullptr;
@@ -78,15 +68,18 @@ namespace engine {
             std::unique_ptr<Texture> m_white_texture;
             std::unique_ptr<Texture> m_default_normal_texture;
 
-            Uint32 m_depth_width = 0;
-            Uint32 m_depth_height = 0;
+            SceneRenderer m_sceneRenderer;
+            ShadowRenderer m_shadowRenderer;
+            UIRenderer m_uiRenderer;
 
-            void createDepthTexture(Uint32 width, Uint32 height);
+            // helpers
+            void renderShadows(const Scene& scene);
+            void renderScene(const Scene& scene);
 
-            void beginShadowPass(std::size_t cascade);
-            void endShadowPass();
-
+            // lifecycle
             void beginRenderPass();
             void endRenderPass();
+            void beginShadowPass(std::size_t cascade);
+            void endShadowPass();
     };
 }

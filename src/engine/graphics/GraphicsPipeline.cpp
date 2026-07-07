@@ -12,6 +12,15 @@ namespace engine {
 
         SDL_GPUColorTargetDescription color_target_desc{};
         color_target_desc.format = info.colorFormat;
+        if (info.blend) {
+            color_target_desc.blend_state.enable_blend = true;
+            color_target_desc.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+            color_target_desc.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+            color_target_desc.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+            color_target_desc.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+            color_target_desc.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+            color_target_desc.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+        }
 
         SDL_GPUGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.vertex_shader = vertex_shader.handle();

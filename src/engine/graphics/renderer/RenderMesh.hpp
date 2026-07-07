@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include <cstdint>
-#include "../math/AABB.hpp"
+#include "../../math/AABB.hpp"
 
 namespace engine {
     class RenderMesh {

@@ -12,6 +12,7 @@ namespace engine {
         int vertexUniformBuffers = 1;
         int fragmentUniformBuffers = 4;
 
+        bool blend = false;
         bool depthTest = true;
         bool depthWrite = true;
         SDL_GPUCompareOp compareOp = SDL_GPU_COMPAREOP_LESS;

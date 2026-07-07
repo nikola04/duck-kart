@@ -5,6 +5,15 @@
 #include "../graphics/Material.hpp"
 
 namespace engine {
+    struct MeshBatchKey {
+        Material* material;
+    };
+
+    struct MeshBatch {
+        std::vector<Vertex> vertices;
+        std::vector<std::uint32_t> indices;
+    };
+
     struct LoadedMaterial {
         glm::vec3 baseColor;
         int baseColorTexture = -1;

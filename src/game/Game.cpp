@@ -1,8 +1,10 @@
 #include "Game.hpp"
-#include <SDL3/SDL_scancode.h>
-#include <glm/fwd.hpp>
+#include "../engine/graphics/Font.hpp"
+#include "../engine/graphics/TextTexture.hpp"
+#include <SDL3/SDL_pixels.h>
+#include <string>
 
-Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
+Game::Game(): engine::Application(), m_assets(renderer()), m_scene(), m_font("assets/fonts/geist_pixel/GeistPixel-Regular-VariableFont_ELSH.ttf", 16){
     // engine::PointLight light{
     //     .position = {0.0f, 5.0f, 5.0f, 1.0f},
     //     .color = {1.0f, 0.9f, 0.7f, 1.0f},
@@ -19,7 +21,6 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
     // transform.scale = { 50.0f, 50.0f, 50.0f};
     // m_scene.addModel(m_assets.loadModel("assets/models/sample.glb", transform));
 
-
     m_scene.camera.fov = 90;
     m_scene.camera.transform.position.y = 1.0f;
     m_scene.skybox.cubemap = m_assets.loadCubemap("assets/skyboxes/day");
@@ -28,8 +29,30 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene() {
 
 void Game::update(float dt){
     float speed = 3.0f;
+    float fps = 1 / dt;
     const float mouseSensitivity = 0.0025f;
     const float maxPitch = glm::radians(89.0f);
+
+    m_fpsTimer += dt;
+    m_fpsFrameCount++;
+
+    if (m_fpsTimer >= 1.0f) {
+        m_fpsText = std::make_unique<engine::TextTexture>(renderer(), m_font, "FPS: " + std::to_string(static_cast<int>(fps)), SDL_Color{255, 255, 255, 200});
+
+        m_scene.uiTextures.clear();
+        m_scene.uiTextures.push_back({
+            .texture = &m_fpsText->texture(),
+            .position = {10.0f, 10.0f},
+            .size = {
+                static_cast<float>(m_fpsText->width()),
+                static_cast<float>(m_fpsText->height())
+            },
+            .color = {1, 1, 1, 1}
+        });
+
+        m_fpsTimer = 0.0f;
+        m_fpsFrameCount = 0;
+    }
 
     // mouse movement
     m_scene.camera.transform.rotation.y += input().mouseDeltaX() * mouseSensitivity;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../graphics/RenderMesh.hpp"
+#include "../graphics/renderer/RenderMesh.hpp"
 #include "../graphics/Material.hpp"
 #include "../math/Transform.hpp"
 
