@@ -1,5 +1,6 @@
 #include "AssetsManager.hpp"
 #include "GLTFLoader.hpp"
+#include "LoadedModelBatcher.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -68,9 +69,10 @@ namespace engine {
         std::string modelName = path.generic_string();
         engine::LoadedModel model;
 
-        if (path.extension() == ".glb" || path.extension() == ".gltf")
-            model = GLTFLoader::loadModel(path);
-        else throw std::runtime_error(std::string("Unsupported model format on path: ") + path.generic_string());
+        if (path.extension() == ".glb" || path.extension() == ".gltf") {
+            GLTFLoader loader;
+            model = LoadedModelBatcher::batchByMaterialAndChunk(loader.loadModel(path), 64);
+        } else throw std::runtime_error(std::string("Unsupported model format on path: ") + path.generic_string());
 
         for (std::size_t i = 0; i < model.textures.size(); i++) {
             std::string name = modelName + "#texture_" + std::to_string(i);

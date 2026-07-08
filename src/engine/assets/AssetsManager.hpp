@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../graphics/Renderer.hpp"
-#include "GLTFLoader.hpp"
+#include "LoadedModel.hpp"
 #include <filesystem>
 #include <memory>
 #include <string>

@@ -20,6 +20,8 @@ class Game final : public engine::Application {
         engine::AssetsManager m_assets;
         engine::Font m_font;
         std::unique_ptr<engine::TextTexture> m_fpsText;
-        float m_fpsTimer = 0.0f;
+        std::unique_ptr<engine::TextTexture> m_coordsText;
+        float m_fpsTimer = 1.0f;
         int m_fpsFrameCount = 0;
+        bool m_debugEnabled = true;
 };

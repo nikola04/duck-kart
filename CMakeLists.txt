@@ -39,6 +39,7 @@ add_executable(main
     src/engine/window/Window.cpp
     src/engine/assets/AssetsManager.cpp
     src/engine/assets/GLTFLoader.cpp
+    src/engine/assets/LoadedModelBatcher.cpp
 
     src/game/Game.cpp
     src/game/meshes/PyramidMesh.cpp

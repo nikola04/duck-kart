@@ -2,6 +2,7 @@
 #include "../engine/graphics/Font.hpp"
 #include "../engine/graphics/TextTexture.hpp"
 #include <SDL3/SDL_pixels.h>
+#include <SDL3/SDL_scancode.h>
 #include <string>
 
 Game::Game(): engine::Application(), m_assets(renderer()), m_scene(), m_font("assets/fonts/geist_pixel/GeistPixel-Regular-VariableFont_ELSH.ttf", 16){
@@ -36,10 +37,21 @@ void Game::update(float dt){
     m_fpsTimer += dt;
     m_fpsFrameCount++;
 
-    if (m_fpsTimer >= 1.0f) {
+    if (m_fpsTimer >= 0.25f) {
         m_fpsText = std::make_unique<engine::TextTexture>(renderer(), m_font, "FPS: " + std::to_string(static_cast<int>(fps)), SDL_Color{255, 255, 255, 200});
 
-        m_scene.uiTextures.clear();
+        m_fpsTimer = 0.0f;
+        m_fpsFrameCount = 0;
+    }
+
+    float x = m_scene.camera.transform.position.x,
+        y = m_scene.camera.transform.position.y,
+        z = m_scene.camera.transform.position.z;
+
+    m_coordsText = std::make_unique<engine::TextTexture>(renderer(), m_font, "XYZ: " + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z), SDL_Color{255, 255, 255, 200});
+
+    m_scene.uiTextures.clear();
+    if (m_debugEnabled) {
         m_scene.uiTextures.push_back({
             .texture = &m_fpsText->texture(),
             .position = {10.0f, 10.0f},
@@ -49,9 +61,15 @@ void Game::update(float dt){
             },
             .color = {1, 1, 1, 1}
         });
-
-        m_fpsTimer = 0.0f;
-        m_fpsFrameCount = 0;
+        m_scene.uiTextures.push_back({
+            .texture = &m_coordsText->texture(),
+            .position = {10.0f, 30.0f},
+            .size = {
+                static_cast<float>(m_coordsText->width()),
+                static_cast<float>(m_coordsText->height())
+            },
+            .color = {1, 1, 1, 1}
+        });
     }
 
     // mouse movement
