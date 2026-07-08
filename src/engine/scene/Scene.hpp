@@ -4,6 +4,7 @@
 #include "RenderChunk.hpp"
 #include "RenderObject.hpp"
 #include "Skybox.hpp"
+#include "../settings/EngineSettings.hpp"
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -48,7 +49,7 @@ namespace engine {
 
         std::unordered_map<ChunkCoords, RenderChunk, ChunkCoordsHash> chunks;
         std::vector<PointLight> pointLights;
-        float chunkSize = DefaultChunkSize;
+        WorldSettings worldSettings = settings().world;
 
         void clear() {
             chunks.clear();
@@ -83,6 +84,13 @@ namespace engine {
             return result;
         }
 
+        ChunkCoords chunkCoordsFromPosition(const glm::vec3& position) const {
+                  return {
+                  .x = static_cast<std::int32_t>(std::floor(position.x / worldSettings.chunkSize)),
+                  .z = static_cast<std::int32_t>(std::floor(position.z / worldSettings.chunkSize))
+              };
+          }
+
         std::vector<UITexture> uiTextures;
 
         private:
@@ -90,8 +98,8 @@ namespace engine {
                 const glm::vec3 center = (bounds.min + bounds.max) * 0.5f;
 
                 return ChunkCoords{
-                    .x = static_cast<std::int32_t>(std::floor(center.x / chunkSize)),
-                    .z = static_cast<std::int32_t>(std::floor(center.z / chunkSize))
+                    .x = static_cast<std::int32_t>(std::floor(center.x / worldSettings.chunkSize)),
+                    .z = static_cast<std::int32_t>(std::floor(center.z / worldSettings.chunkSize))
                 };
             }
     };

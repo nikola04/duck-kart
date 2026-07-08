@@ -1,7 +1,7 @@
 #include "AssetsManager.hpp"
 #include "GLTFLoader.hpp"
 #include "LoadedModelBatcher.hpp"
-#include "../scene/RenderChunk.hpp"
+#include "../settings/EngineSettings.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -41,7 +41,7 @@ namespace engine {
         if (auto* texture = getTexture(name))
             return texture;
 
-        auto texture = std::make_unique<engine::Texture>(m_renderer.resources().createTexture(loadedTexture.pixels.data(), loadedTexture.width, loadedTexture.height));
+        auto texture = std::make_unique<engine::Texture>(m_renderer.resources().createTexture(loadedTexture.pixels.data(), loadedTexture.width, loadedTexture.height, settings().graphics.generateMipmaps));
         Texture *ptr = texture.get();
 
         m_textures.emplace(name, std::move(texture));
@@ -72,7 +72,7 @@ namespace engine {
 
         if (path.extension() == ".glb" || path.extension() == ".gltf") {
             GLTFLoader loader;
-            model = LoadedModelBatcher::batchByMaterialAndChunk(loader.loadModel(path), DefaultChunkSize);
+            model = LoadedModelBatcher::batchByMaterialAndChunk(loader.loadModel(path), settings().world.chunkSize);
         } else throw std::runtime_error(std::string("Unsupported model format on path: ") + path.generic_string());
 
         for (std::size_t i = 0; i < model.textures.size(); i++) {

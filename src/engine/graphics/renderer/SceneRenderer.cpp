@@ -25,13 +25,21 @@ namespace engine {
         Frustum cameraFrustum;
         cameraFrustum.update(scene.camera.projectionMatrix(aspectRatio) * scene.camera.viewMatrix());
 
+        ChunkCoords cameraChunk = scene.chunkCoordsFromPosition(scene.camera.transform.position);
+
         for (const auto& [coords, chunk] : scene.chunks) {
+            if (!cameraChunk.isInViewDistance(coords, scene.worldSettings.viewDistanceChunks))
+                continue;
+
             if (!cameraFrustum.intersects(chunk.bounds))
                 continue;
 
             stats.visibleChunks++;
 
             for (const auto& object : chunk.objects) {
+                if (!cameraFrustum.intersects(object.bounds))
+                    continue;
+
                 draw(context, *object.mesh, object.transform, scene.camera, *object.material, scene.skybox, scene.sun, pointLightUniforms);
                 stats.visibleObjects++;
                 stats.drawCalls++;

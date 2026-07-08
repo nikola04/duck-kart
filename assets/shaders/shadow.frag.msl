@@ -1,6 +1,33 @@
 #include <metal_stdlib>
 using namespace metal;
 
-fragment void main0()
+struct FragmentInput
 {
+    float4 position [[position]];
+    float2 uv;
+};
+
+struct MaterialUniforms
+{
+    float4 baseColor;
+    float4 properties;
+};
+
+fragment void main0(
+    FragmentInput input [[stage_in]],
+    constant MaterialUniforms& material [[buffer(0)]],
+    texture2d<float> baseTexture [[texture(0)]],
+    sampler baseSampler [[sampler(0)]]
+)
+{
+    float alphaCutoff = material.properties.z;
+    float alphaMode = material.properties.w;
+
+    if (alphaMode > 0.5 && alphaMode < 1.5)
+    {
+        float alpha = baseTexture.sample(baseSampler, input.uv).a * material.baseColor.a;
+
+        if (alpha < alphaCutoff)
+            discard_fragment();
+    }
 }

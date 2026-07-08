@@ -19,13 +19,16 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene(), m_font("as
     // m_scene.addModel(m_assets.loadModel("assets/models/sphere.glb", bulbTransform));
 
     // engine::Transform transform{};
-    // transform.scale = { 50.0f, 50.0f, 50.0f};
-    // m_scene.addModel(m_assets.loadModel("assets/models/sample.glb", transform));
+    // transform.scale = { 5.0f, 5.0f, 5.0f};
+    // transform.position.y = 1.0f;
+    // transform.position.x = 10.0f;
+    // m_scene.addModel(m_assets.loadModel("assets/models/mr._pumpkin.glb", transform));
 
     m_scene.camera.fov = 90;
     m_scene.camera.transform.position.y = 1.0f;
     m_scene.skybox.cubemap = m_assets.loadCubemap("assets/skyboxes/day");
     m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track.glb", {}));
+    // m_scene.addModel(m_assets.loadModel("assets/models/moorhuhn_kart_2_farm.glb", {}));
 }
 
 void Game::update(float dt){

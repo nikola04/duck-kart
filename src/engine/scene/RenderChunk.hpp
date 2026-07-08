@@ -2,19 +2,25 @@
 
 #include "RenderObject.hpp"
 #include "../math/AABB.hpp"
+#include <cstdlib>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <vector>
 
 namespace engine {
-    constexpr float DefaultChunkSize = 128.0f;
-
     struct ChunkCoords {
         std::int32_t x, z;
 
         bool operator ==(const ChunkCoords& other) const {
             return other.x == x && other.z == z;
+        }
+
+        bool isInViewDistance(const ChunkCoords& other, int viewDistance) const {
+            int dx = std::abs(x - other.x);
+            int dz = std::abs(z - other.z);
+
+            return dx * dx + dz * dz <= viewDistance * viewDistance;
         }
     };
 

@@ -45,7 +45,7 @@ namespace engine {
         if (!SDL_ClaimWindowForGPUDevice(m_device, m_window.handle()))
             throw std::runtime_error(std::string("SDL_ClaimWindowForGPUDevice failed: ") + SDL_GetError());
 
-        SDL_GPUPresentMode presentMode = choosePresentMode(m_device, m_window.handle(), m_vsync);
+        SDL_GPUPresentMode presentMode = choosePresentMode(m_device, m_window.handle(), m_graphicsSettings.vsyncEnabled);
         if (!SDL_SetGPUSwapchainParameters(m_device, m_window.handle(), SDL_GPU_SWAPCHAINCOMPOSITION_SDR, presentMode)) {
             throw std::runtime_error(std::string("SDL_SetGPUSwapchainParameters failed: ") + SDL_GetError());
         }
@@ -74,9 +74,9 @@ namespace engine {
         m_shadowPipeline.emplace(m_device, "assets/shaders/shadow.vert.msl", "assets/shaders/shadow.frag.msl", GraphicsPipelineInfo{
             .colorFormat = SDL_GPU_TEXTUREFORMAT_INVALID,
             .depthFormat = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
-            .fragmentSamplers = 0,
+            .fragmentSamplers = 1,
             .vertexUniformBuffers = 1,
-            .fragmentUniformBuffers = 0,
+            .fragmentUniformBuffers = 1,
             .depthTest = true,
             .depthWrite = true,
             .compareOp = SDL_GPU_COMPAREOP_LESS
@@ -104,8 +104,8 @@ namespace engine {
         samplerInfo.address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
         samplerInfo.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
         samplerInfo.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
-        samplerInfo.enable_anisotropy = true;
-        samplerInfo.max_anisotropy = 16.0f;
+        samplerInfo.enable_anisotropy = m_graphicsSettings.anisotropyEnabled;
+        samplerInfo.max_anisotropy = m_graphicsSettings.maxAnisotropy;
 
         m_default_sampler = SDL_CreateGPUSampler(m_device, &samplerInfo);
         if (!m_default_sampler)
@@ -198,6 +198,8 @@ namespace engine {
                 .commandBuffer = m_command_buffer,
                 .renderPass = m_shadow_render_pass,
                 .shadowPipeline = *m_shadowPipeline,
+                .defaultSampler = m_default_sampler,
+                .whiteTexture = *m_white_texture,
                 .shadowCameras = m_shadowCameras,
             }, i);
         }
@@ -240,7 +242,7 @@ namespace engine {
         if (!m_command_buffer || !m_swapchain_texture)
               return;
 
-        if (m_enableShadows)
+        if (m_graphicsSettings.shadowsEnabled)
             renderShadows(scene);
 
         renderScene(scene);

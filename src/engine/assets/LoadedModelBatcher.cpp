@@ -28,6 +28,17 @@ namespace engine {
                 const Vertex& b = vertices[indices[i + 1]];
                 const Vertex& c = vertices[indices[i + 2]];
 
+                AABB triangleBounds;
+                triangleBounds.expand(a.position);
+                triangleBounds.expand(b.position);
+                triangleBounds.expand(c.position);
+
+                glm::vec3 triangleSize = triangleBounds.max - triangleBounds.min;
+                if (triangleSize.x > chunkSize || triangleSize.z > chunkSize) {
+                    std::cout << "Large triangle detected. Consider subdividing mesh. "
+                              << "size=(" << triangleSize.x << ", " << triangleSize.z << ")\n";
+                }
+
                 glm::vec3 centroid = (a.position + b.position + c.position) / 3.0f;
 
                 ChunkBatchKey key = {

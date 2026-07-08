@@ -9,6 +9,7 @@
 #include <optional>
 #include "../window/Window.hpp"
 #include "../scene/Scene.hpp"
+#include "../settings/EngineSettings.hpp"
 #include "GraphicsPipeline.hpp"
 #include "ShadowCamera.hpp"
 #include "ShadowConstants.hpp"
@@ -51,8 +52,7 @@ namespace engine {
             SDL_GPUDevice* m_device = nullptr;
             std::optional<RendererResources> m_resources;
 
-            bool m_enableShadows = true;
-            bool m_vsync = true;
+            GraphicsSettings m_graphicsSettings = settings().graphics;
 
             std::optional<GraphicsPipeline> m_mainPipeline;
             std::optional<GraphicsPipeline> m_skyboxPipeline;
