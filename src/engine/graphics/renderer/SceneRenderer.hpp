@@ -14,9 +14,16 @@
 #include "../Material.hpp"
 #include "../../window/Window.hpp"
 #include <array>
+#include <cstddef>
 #include <optional>
 
 namespace engine {
+    struct SceneRenderStats {
+        std::size_t visibleChunks = 0;
+        std::size_t visibleObjects = 0;
+        std::size_t drawCalls = 0;
+    };
+
     class SceneRenderer {
         public:
             struct Context {
@@ -34,7 +41,7 @@ namespace engine {
                 const std::array<ShadowCamera, ShadowCascadeCount>& shadowCameras;
             };
 
-            void render(const Scene& scene, const Context& context) const;
+            SceneRenderStats render(const Scene& scene, const Context& context) const;
 
         private:
             void draw(

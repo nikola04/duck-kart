@@ -1,14 +1,24 @@
 #pragma once
 
 #include "Camera.hpp"
+#include "RenderChunk.hpp"
 #include "RenderObject.hpp"
 #include "Skybox.hpp"
-#include <iterator>
+#include <cmath>
+#include <cstdint>
+#include <iostream>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace engine {
     struct RenderModel {
         std::vector<RenderObject> objects;
+    };
+
+    struct SceneStats {
+        std::size_t chunks = 0;
+        std::size_t objects = 0;
     };
 
     struct DirectionalLight {
@@ -36,18 +46,53 @@ namespace engine {
         Skybox skybox;
         DirectionalLight sun;
 
-        std::vector<RenderObject> objects;
+        std::unordered_map<ChunkCoords, RenderChunk, ChunkCoordsHash> chunks;
         std::vector<PointLight> pointLights;
+        float chunkSize = DefaultChunkSize;
 
         void clear() {
-            objects.clear();
+            chunks.clear();
             uiTextures.clear();
         }
 
         void addModel(RenderModel&& model) {
-            objects.insert(objects.end(), std::make_move_iterator(model.objects.begin()), std::make_move_iterator(model.objects.end()));
+            const std::size_t addedObjects = model.objects.size();
+
+            for (auto& object : model.objects) {
+                ChunkCoords coords = chunkCoordsFromBounds(object.bounds);
+                RenderChunk& chunk = chunks[coords];
+                chunk.bounds.expand(object.bounds.min);
+                chunk.bounds.expand(object.bounds.max);
+                chunk.objects.push_back(std::move(object));
+            }
+
+            const SceneStats currentStats = stats();
+            std::cout << "Scene addModel: added objects " << addedObjects
+                      << ", total chunks " << currentStats.chunks
+                      << ", total objects " << currentStats.objects
+                      << std::endl;
+        }
+
+        SceneStats stats() const {
+            SceneStats result{};
+            result.chunks = chunks.size();
+
+            for (const auto& [coords, chunk] : chunks)
+                result.objects += chunk.objects.size();
+
+            return result;
         }
 
         std::vector<UITexture> uiTextures;
+
+        private:
+            ChunkCoords chunkCoordsFromBounds(const AABB& bounds) const {
+                const glm::vec3 center = (bounds.min + bounds.max) * 0.5f;
+
+                return ChunkCoords{
+                    .x = static_cast<std::int32_t>(std::floor(center.x / chunkSize)),
+                    .z = static_cast<std::int32_t>(std::floor(center.z / chunkSize))
+                };
+            }
     };
 }

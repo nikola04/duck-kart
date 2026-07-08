@@ -1,4 +1,5 @@
 #include "GLTFLoader.hpp"
+#include "LoadedModel.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -31,11 +32,12 @@ namespace engine {
         return &model.accessors[it->second];
     }
 
-    static std::vector<Vertex> loadVertices(
+    static LoadedGeometry loadVertices(
         const tinygltf::Model& model,
         const tinygltf::Primitive& primitive,
         const glm::mat4& transform
     ) {
+        LoadedGeometry geometry;
         auto positionIt = primitive.attributes.find("POSITION");
         if (positionIt == primitive.attributes.end())
             throw std::runtime_error("GLB primitive has no POSITION attribute");
@@ -66,8 +68,7 @@ namespace engine {
 
         const glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transform)));
 
-        std::vector<Vertex> vertices;
-        vertices.reserve(positionAccessor.count);
+        geometry.vertices.reserve(positionAccessor.count);
 
         for (std::size_t i = 0; i < positionAccessor.count; ++i) {
             const float x = positions[i * 3 + 0], y = positions[i * 3 + 1], z = positions[i * 3 + 2];
@@ -101,15 +102,18 @@ namespace engine {
                 };
             }
 
-            vertices.push_back(Vertex{
+            Vertex vertex = Vertex{
                 .position = {worldPos.x, worldPos.y, worldPos.z},
                 .normal = normal,
                 .uv = uv,
                 .tangent = tangent
-            });
+            };
+
+            geometry.vertices.push_back(vertex);
+            geometry.bounds.expand(vertex.position);
         }
 
-        return vertices;
+        return geometry;
     }
 
     static std::vector<std::uint32_t> loadIndices(
@@ -264,12 +268,15 @@ namespace engine {
                 if (materialIndex < 0)
                     materialIndex = -1;
 
+                LoadedGeometry geometry = loadVertices(model, primitive, globalTransform);
+
                 loadedModel.meshes.push_back(LoadedMesh{
                     .mesh = Mesh{
-                        loadVertices(model, primitive, globalTransform),
+                        geometry.vertices,
                         loadIndices(model, primitive)
                     },
-                    .material = materialIndex
+                    .material = materialIndex,
+                    .bounds = geometry.bounds
                 });
             }
         }

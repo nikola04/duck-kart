@@ -39,6 +39,17 @@ void Game::update(float dt){
 
     if (m_fpsTimer >= 0.25f) {
         m_fpsText = std::make_unique<engine::TextTexture>(renderer(), m_font, "FPS: " + std::to_string(static_cast<int>(fps)), SDL_Color{255, 255, 255, 200});
+        const auto sceneStats = m_scene.stats();
+        const auto renderStats = renderer().stats();
+        m_sceneStatsText = std::make_unique<engine::TextTexture>(
+            renderer(),
+            m_font,
+            "Visible: " + std::to_string(renderStats.visibleChunks) + "/" + std::to_string(sceneStats.chunks)
+                + " chunks "
+                + std::to_string(renderStats.visibleObjects) + "/" + std::to_string(sceneStats.objects)
+                + " objects Draws: " + std::to_string(renderStats.drawCalls),
+            SDL_Color{255, 255, 255, 200}
+        );
 
         m_fpsTimer = 0.0f;
         m_fpsFrameCount = 0;
@@ -67,6 +78,15 @@ void Game::update(float dt){
             .size = {
                 static_cast<float>(m_coordsText->width()),
                 static_cast<float>(m_coordsText->height())
+            },
+            .color = {1, 1, 1, 1}
+        });
+        m_scene.uiTextures.push_back({
+            .texture = &m_sceneStatsText->texture(),
+            .position = {10.0f, 50.0f},
+            .size = {
+                static_cast<float>(m_sceneStatsText->width()),
+                static_cast<float>(m_sceneStatsText->height())
             },
             .color = {1, 1, 1, 1}
         });

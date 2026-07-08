@@ -1,4 +1,5 @@
 #include "SceneRenderer.hpp"
+#include "../../math/Frustum.hpp"
 #include "../uniforms/CameraUniforms.hpp"
 #include "../uniforms/MaterialUniforms.hpp"
 #include "../uniforms/ShadowLightUniforms.hpp"
@@ -7,7 +8,9 @@
 #include <stdexcept>
 
 namespace engine {
-    void SceneRenderer::render(const Scene& scene, const Context& context) const {
+    SceneRenderStats SceneRenderer::render(const Scene& scene, const Context& context) const {
+        SceneRenderStats stats{};
+
         PointLightUniforms pointLightUniforms{};
         std::size_t count = std::min(scene.pointLights.size(), static_cast<std::size_t>(MaxPointLights));
         pointLightUniforms.count.x = static_cast<float>(count);
@@ -15,10 +18,30 @@ namespace engine {
         for (std::size_t i = 0; i < count; ++i)
             pointLightUniforms.lights[i] = scene.pointLights[i];
 
-        for (const auto& object : scene.objects)
-            draw(context, *object.mesh, object.transform, scene.camera, *object.material, scene.skybox, scene.sun, pointLightUniforms);
+        const float aspectRatio =
+            static_cast<float>(context.window.width()) /
+            static_cast<float>(context.window.height());
+
+        Frustum cameraFrustum;
+        cameraFrustum.update(scene.camera.projectionMatrix(aspectRatio) * scene.camera.viewMatrix());
+
+        for (const auto& [coords, chunk] : scene.chunks) {
+            if (!cameraFrustum.intersects(chunk.bounds))
+                continue;
+
+            stats.visibleChunks++;
+
+            for (const auto& object : chunk.objects) {
+                draw(context, *object.mesh, object.transform, scene.camera, *object.material, scene.skybox, scene.sun, pointLightUniforms);
+                stats.visibleObjects++;
+                stats.drawCalls++;
+            }
+        }
 
         drawSkybox(context, scene.skybox, scene.camera);
+        stats.drawCalls++;
+
+        return stats;
     }
 
     void SceneRenderer::drawSkybox(const Context& context, const Skybox& skybox, const Camera& camera) const {

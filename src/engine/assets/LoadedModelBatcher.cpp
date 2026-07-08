@@ -12,6 +12,7 @@ namespace engine {
         struct MeshBatch {
             std::vector<Vertex> vertices;
             std::vector<std::uint32_t> indices;
+            AABB bounds;
         };
     }
 
@@ -45,6 +46,10 @@ namespace engine {
                 batch.indices.push_back(base);
                 batch.indices.push_back(base + 1);
                 batch.indices.push_back(base + 2);
+
+                batch.bounds.expand(a.position);
+                batch.bounds.expand(b.position);
+                batch.bounds.expand(c.position);
             }
         }
 
@@ -60,7 +65,8 @@ namespace engine {
 
             batchedModel.meshes.push_back(LoadedMesh{
                 .mesh = Mesh{std::move(batch.vertices), std::move(batch.indices)},
-                .material = key.material
+                .material = key.material,
+                .bounds = batch.bounds,
             });
         }
 

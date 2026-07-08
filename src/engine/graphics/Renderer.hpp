@@ -22,6 +22,12 @@
 #include <array>
 
 namespace engine {
+    struct RendererStats {
+        std::size_t visibleChunks = 0;
+        std::size_t visibleObjects = 0;
+        std::size_t drawCalls = 0;
+    };
+
     class Renderer {
         public:
             Renderer(Window& window);
@@ -35,6 +41,7 @@ namespace engine {
             RendererResources& resources();
 
             void render(const Scene& scene);
+            const RendererStats& stats() const;
 
             bool beginFrame();
             void endFrame();
@@ -71,6 +78,7 @@ namespace engine {
             SceneRenderer m_sceneRenderer;
             ShadowRenderer m_shadowRenderer;
             UIRenderer m_uiRenderer;
+            RendererStats m_stats;
 
             // helpers
             void renderShadows(const Scene& scene);

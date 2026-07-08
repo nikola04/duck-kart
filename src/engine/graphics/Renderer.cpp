@@ -207,7 +207,7 @@ namespace engine {
         beginRenderPass();
         PassScope renderPass{[this] { endRenderPass(); }};
 
-        m_sceneRenderer.render(scene, SceneRenderer::Context{
+        SceneRenderStats sceneStats = m_sceneRenderer.render(scene, SceneRenderer::Context{
             .window = m_window,
             .commandBuffer = m_command_buffer,
             .renderPass = m_render_pass,
@@ -221,6 +221,10 @@ namespace engine {
             .shadowMaps = m_shadowMaps,
             .shadowCameras = m_shadowCameras,
         });
+
+        m_stats.visibleChunks = sceneStats.visibleChunks;
+        m_stats.visibleObjects = sceneStats.visibleObjects;
+        m_stats.drawCalls = sceneStats.drawCalls;
 
         m_uiRenderer.render(scene.uiTextures, UIRenderer::Context{
             .window = m_window,
@@ -240,6 +244,10 @@ namespace engine {
             renderShadows(scene);
 
         renderScene(scene);
+    }
+
+    const RendererStats& Renderer::stats() const {
+        return m_stats;
     }
 
     bool Renderer::beginFrame() {

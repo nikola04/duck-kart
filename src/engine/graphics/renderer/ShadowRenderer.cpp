@@ -8,12 +8,16 @@ namespace engine {
         Frustum shadowFrustum;
         shadowFrustum.update(context.shadowCameras[cascade].projection() * context.shadowCameras[cascade].view());
 
-        for (const auto& object : scene.objects) {
-            AABB worldBounds = object.mesh->bounds().transformed(object.transform.matrix());
-            if (!shadowFrustum.intersects(worldBounds))
+        for (const auto& [coords, chunk] : scene.chunks) {
+            if (!shadowFrustum.intersects(chunk.bounds))
                 continue;
 
-            drawShadow(context, *object.mesh, object.transform, cascade);
+            for (const auto& object : chunk.objects) {
+                if (!shadowFrustum.intersects(object.bounds))
+                    continue;
+
+                drawShadow(context, *object.mesh, object.transform, cascade);
+            }
         }
     }
 

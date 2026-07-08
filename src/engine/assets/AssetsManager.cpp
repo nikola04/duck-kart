@@ -1,6 +1,7 @@
 #include "AssetsManager.hpp"
 #include "GLTFLoader.hpp"
 #include "LoadedModelBatcher.hpp"
+#include "../scene/RenderChunk.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -71,7 +72,7 @@ namespace engine {
 
         if (path.extension() == ".glb" || path.extension() == ".gltf") {
             GLTFLoader loader;
-            model = LoadedModelBatcher::batchByMaterialAndChunk(loader.loadModel(path), 64);
+            model = LoadedModelBatcher::batchByMaterialAndChunk(loader.loadModel(path), DefaultChunkSize);
         } else throw std::runtime_error(std::string("Unsupported model format on path: ") + path.generic_string());
 
         for (std::size_t i = 0; i < model.textures.size(); i++) {
@@ -101,6 +102,7 @@ namespace engine {
                 .mesh = renderMesh,
                 .material = material,
                 .transform = transform,
+                .bounds = loadedMesh.bounds.transformed(transform.matrix()),
             });
         }
 

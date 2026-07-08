@@ -2,6 +2,7 @@
 
 #include "../graphics/Material.hpp"
 #include "../graphics/Mesh.hpp"
+#include "../math/AABB.hpp"
 #include <cstdint>
 #include <glm/vec3.hpp>
 #include <vector>
@@ -26,9 +27,15 @@ namespace engine {
         std::uint32_t height = 0;
     };
 
+    struct LoadedGeometry {
+         std::vector<Vertex> vertices;
+         AABB bounds;
+     };
+
     struct LoadedMesh {
         Mesh mesh;
         int material = -1;
+        AABB bounds;
     };
 
     struct LoadedModel {
