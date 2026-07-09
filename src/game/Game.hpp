@@ -5,6 +5,7 @@
 #include "../engine/assets/AssetsManager.hpp"
 #include "../engine/graphics/Font.hpp"
 #include "../engine/graphics/TextTexture.hpp"
+#include "../engine/world/World.hpp"
 #include <memory>
 
 class Game final : public engine::Application {
@@ -18,6 +19,8 @@ class Game final : public engine::Application {
     private:
         engine::Scene m_scene;
         engine::AssetsManager m_assets;
+        engine::World m_world;
+        engine::Entity m_cameraEntity = engine::NullEntity;
         engine::Font m_font;
         std::unique_ptr<engine::TextTexture> m_fpsText;
         std::unique_ptr<engine::TextTexture> m_coordsText;

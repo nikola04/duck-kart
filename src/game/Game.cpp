@@ -1,6 +1,7 @@
 #include "Game.hpp"
 #include "../engine/graphics/Font.hpp"
 #include "../engine/graphics/TextTexture.hpp"
+#include "../engine/world/components/TransformComponent.hpp"
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_scancode.h>
 #include <string>
@@ -24,8 +25,13 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene(), m_font("as
     // transform.position.x = 10.0f;
     // m_scene.addModel(m_assets.loadModel("assets/models/mr._pumpkin.glb", transform));
 
+    m_cameraEntity = m_world.createEntity();
+    engine::Transform cameraTransform;
+    cameraTransform.position.y = 1.0f;
+    m_world.add(m_cameraEntity, engine::TransformComponent{ .transform = cameraTransform });
+    m_scene.camera.transform = cameraTransform;
     m_scene.camera.fov = 90;
-    m_scene.camera.transform.position.y = 1.0f;
+
     m_scene.skybox.cubemap = m_assets.loadCubemap("assets/skyboxes/day");
     m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track.glb", {}));
     // m_scene.addModel(m_assets.loadModel("assets/models/moorhuhn_kart_2_farm.glb", {}));
@@ -36,11 +42,14 @@ void Game::update(float dt){
     float fps = 1 / dt;
     const float mouseSensitivity = 0.0025f;
     const float maxPitch = glm::radians(89.0f);
+    auto* cameraTransform = m_world.get<engine::TransformComponent>(m_cameraEntity);
+    if (!cameraTransform)
+        return;
 
     m_fpsTimer += dt;
     m_fpsFrameCount++;
 
-    if (m_fpsTimer >= 0.25f) {
+    if (m_fpsTimer >= 0.5f) {
         m_fpsText = std::make_unique<engine::TextTexture>(renderer(), m_font, "FPS: " + std::to_string(static_cast<int>(fps)), SDL_Color{255, 255, 255, 200});
         const auto sceneStats = m_scene.stats();
         const auto renderStats = renderer().stats();
@@ -58,9 +67,9 @@ void Game::update(float dt){
         m_fpsFrameCount = 0;
     }
 
-    float x = m_scene.camera.transform.position.x,
-        y = m_scene.camera.transform.position.y,
-        z = m_scene.camera.transform.position.z;
+    float x = cameraTransform->transform.position.x,
+        y = cameraTransform->transform.position.y,
+        z = cameraTransform->transform.position.z;
 
     m_coordsText = std::make_unique<engine::TextTexture>(renderer(), m_font, "XYZ: " + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z), SDL_Color{255, 255, 255, 200});
 
@@ -96,21 +105,23 @@ void Game::update(float dt){
     }
 
     // mouse movement
-    m_scene.camera.transform.rotation.y += input().mouseDeltaX() * mouseSensitivity;
-    m_scene.camera.transform.rotation.x -= input().mouseDeltaY() * mouseSensitivity;
-    m_scene.camera.transform.rotation.x = std::clamp(m_scene.camera.transform.rotation.x, -maxPitch, maxPitch);
+    cameraTransform->transform.rotation.y += input().mouseDeltaX() * mouseSensitivity;
+    cameraTransform->transform.rotation.x -= input().mouseDeltaY() * mouseSensitivity;
+    cameraTransform->transform.rotation.x = std::clamp(cameraTransform->transform.rotation.x, -maxPitch, maxPitch);
 
     if (input().isKeyDown(SDL_SCANCODE_LCTRL))
         speed = 30.0f;
     // keyboard movement
     if (input().isKeyDown(SDL_SCANCODE_W))
-        m_scene.camera.transform.position += m_scene.camera.transform.forward() * speed * dt;
+        cameraTransform->transform.position += cameraTransform->transform.forward() * speed * dt;
     if (input().isKeyDown(SDL_SCANCODE_S))
-        m_scene.camera.transform.position -= m_scene.camera.transform.forward() * speed * dt;
+        cameraTransform->transform.position -= cameraTransform->transform.forward() * speed * dt;
     if (input().isKeyDown(SDL_SCANCODE_A))
-        m_scene.camera.transform.position -= m_scene.camera.transform.right() * speed * dt;
+        cameraTransform->transform.position -= cameraTransform->transform.right() * speed * dt;
     if (input().isKeyDown(SDL_SCANCODE_D))
-        m_scene.camera.transform.position += m_scene.camera.transform.right() * speed * dt;
+        cameraTransform->transform.position += cameraTransform->transform.right() * speed * dt;
+
+    m_scene.camera.transform = cameraTransform->transform;
 
     if (input().isKeyDown(SDL_SCANCODE_ESCAPE))
         quit();
