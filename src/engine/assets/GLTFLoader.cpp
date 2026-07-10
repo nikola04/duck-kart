@@ -245,6 +245,12 @@ namespace engine {
             result.baseColorTexture = gltfTexture.source;
         }
 
+        if (pbr.metallicRoughnessTexture.index >= 0) {
+            const auto& gltfTexture = model.textures[pbr.metallicRoughnessTexture.index];
+
+            result.metallicRoughnessTexture = gltfTexture.source;
+        }
+
         return result;
     }
 

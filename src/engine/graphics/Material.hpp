@@ -15,6 +15,7 @@ namespace engine {
 
         const Texture* texture = nullptr;
         const Texture* normalTexture = nullptr;
+        const Texture* metallicRoughnessTexture = nullptr;
 
         float metallic = 0.0f;
         float roughness = 1.0f;

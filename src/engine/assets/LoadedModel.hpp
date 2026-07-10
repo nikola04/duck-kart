@@ -12,6 +12,7 @@ namespace engine {
         glm::vec3 baseColor;
         int baseColorTexture = -1;
         int normalTexture = -1;
+        int metallicRoughnessTexture = -1;
 
         float metallic = 0.0f;
         float roughness = 1.0f;

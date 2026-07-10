@@ -32,7 +32,7 @@ namespace engine {
             Texture* createTexture(const std::string& name, const LoadedTexture& loadedTexture);
 
             Material* getMaterial(const std::string& name);
-            Material* createMaterial(const std::string& name, const LoadedMaterial& loadedMaterial, const Texture* texture, const Texture* normalTexture);
+            Material* createMaterial(const std::string& name, const LoadedMaterial& loadedMaterial, const Texture* texture, const Texture* normalTexture, const Texture* metallicRoughnessTexture);
 
         private:
             RenderModel createRenderModel(const std::string& modelName, const LoadedModel& model, Transform transform, BatchStrategy batchStrategy);

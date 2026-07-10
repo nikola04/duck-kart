@@ -37,6 +37,7 @@ namespace engine {
                 SDL_GPUSampler* shadowSampler = nullptr;
                 const Texture& whiteTexture;
                 const Texture& defaultNormalTexture;
+                const Texture& defaultMetallicRoughnessTexture;
                 const std::array<std::optional<ShadowMap>, ShadowCascadeCount>& shadowMaps;
                 const std::array<ShadowCamera, ShadowCascadeCount>& shadowCameras;
             };

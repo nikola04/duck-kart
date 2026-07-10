@@ -74,6 +74,7 @@ namespace engine {
 
             std::unique_ptr<Texture> m_white_texture;
             std::unique_ptr<Texture> m_default_normal_texture;
+            std::unique_ptr<Texture> m_default_metallic_roughness_texture;
 
             SceneRenderer m_sceneRenderer;
             ShadowRenderer m_shadowRenderer;

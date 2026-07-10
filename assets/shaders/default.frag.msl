@@ -57,6 +57,16 @@ float blendFactor(float depth, float split, float blendRange)
     return saturate((depth - (split - blendRange)) / blendRange);
 }
 
+float3 srgbToLinear(float3 color)
+{
+    return pow(saturate(color), float3(2.2));
+}
+
+float3 linearToSrgb(float3 color)
+{
+    return pow(saturate(color), float3(1.0 / 2.2));
+}
+
 float calculateShadow(
     float4 shadowPosition,
     float3 normal,
@@ -109,24 +119,26 @@ fragment float4 main0(
 
     texture2d<float> baseTexture [[texture(0)]],
     texture2d<float> normalTexture [[texture(1)]],
-    texturecube<float> skyboxTexture [[texture(2)]],
-    depth2d<float> shadowMap0 [[texture(3)]],
-    depth2d<float> shadowMap1 [[texture(4)]],
-    depth2d<float> shadowMap2 [[texture(5)]],
-    depth2d<float> shadowMap3 [[texture(6)]],
+    texture2d<float> metallicRoughnessTexture [[texture(2)]],
+    texturecube<float> skyboxTexture [[texture(3)]],
+    depth2d<float> shadowMap0 [[texture(4)]],
+    depth2d<float> shadowMap1 [[texture(5)]],
+    depth2d<float> shadowMap2 [[texture(6)]],
+    depth2d<float> shadowMap3 [[texture(7)]],
 
     sampler baseSampler [[sampler(0)]],
     sampler normalSampler [[sampler(1)]],
-    sampler skyboxSampler [[sampler(2)]],
-    sampler shadowSampler0 [[sampler(3)]],
-    sampler shadowSampler1 [[sampler(4)]],
-    sampler shadowSampler2 [[sampler(5)]],
-    sampler shadowSampler3 [[sampler(6)]]
+    sampler metallicRoughnessSampler [[sampler(2)]],
+    sampler skyboxSampler [[sampler(3)]],
+    sampler shadowSampler0 [[sampler(4)]],
+    sampler shadowSampler1 [[sampler(5)]],
+    sampler shadowSampler2 [[sampler(6)]],
+    sampler shadowSampler3 [[sampler(7)]]
 )
 {
     float3 N = normalize(input.normal);
     float3 T = normalize(input.tangent.xyz);
-    float3 B = normalize(cross(T, N) * input.tangent.w);
+    float3 B = normalize(cross(N, T) * input.tangent.w);
     float3 normalSample = normalTexture.sample(normalSampler, input.uv).rgb;
 
     normalSample = normalSample * 2.0 - 1.0;
@@ -147,19 +159,13 @@ fragment float4 main0(
 
     float diffuse = max(dot(normal, lightDir), 0.0);
 
-    float metallic = material.properties.x;
-    float roughness = clamp(material.properties.y, 0.05, 1.0);
+    float4 metallicRoughnessSample = metallicRoughnessTexture.sample(metallicRoughnessSampler, input.uv);
+    float metallic = material.properties.x * metallicRoughnessSample.b;
+    float roughness = clamp(material.properties.y * metallicRoughnessSample.g, 0.05, 1.0);
 
     float3 halfDir = normalize(lightDir + viewDir);
 
     float shininess = mix(128.0, 8.0, roughness);
-
-    float specularStrength = mix(0.08, 0.9, metallic);
-
-    float specular = pow(
-        max(dot(normal, halfDir), 0.0),
-        shininess
-    ) * specularStrength;
 
     uint pointLightCount = min((uint)pointLights.count.x, (uint)MAX_POINT_LIGHTS);
 
@@ -172,7 +178,14 @@ fragment float4 main0(
         if (texColor.a < alphaCutoff)
             discard_fragment();
     }
-    float3 baseColor = texColor.rgb * material.baseColor.rgb;
+    float3 baseColor = srgbToLinear(texColor.rgb) * srgbToLinear(material.baseColor.rgb);
+    float3 specularColor = mix(float3(0.04), baseColor, metallic);
+    float directSpecularStrength = (1.0 - roughness) * mix(0.35, 1.0, metallic);
+
+    float specular = pow(
+        max(dot(normal, halfDir), 0.0),
+        shininess
+    ) * directSpecularStrength;
 
     float shadow;
     float blendRange = 5.0;
@@ -227,16 +240,21 @@ fragment float4 main0(
         shadow = calculateShadow(input.shadowPosition3, normal, lightDir, shadowMap3, shadowSampler3, shadowStrength);
     }
 
-    float3 directLight =
-        baseColor * sunColor * diffuse +
-        sunColor * specular;
+    float3 reflectionDir = reflect(-viewDir, normal);
+    float3 skySpecular = srgbToLinear(skyboxTexture.sample(skyboxSampler, reflectionDir).rgb);
+    float metalReflectionStrength = metallic * mix(1.0, 0.25, roughness);
 
-    float3 skyAmbient = skyboxTexture.sample(skyboxSampler, normal).rgb;
+    float3 directLight =
+        baseColor * (1.0 - metallic) * sunColor * diffuse +
+        specularColor * sunColor * specular;
+
+    float3 skyAmbient = srgbToLinear(skyboxTexture.sample(skyboxSampler, normal).rgb);
 
     float skyIntensity = 0.35;
 
     float3 indirectLight =
-        baseColor * skyAmbient * skyIntensity;
+        baseColor * (1.0 - metallic) * skyAmbient * skyIntensity +
+        skySpecular * specularColor * metalReflectionStrength;
 
     float3 finalColor =
         indirectLight +
@@ -263,18 +281,19 @@ fragment float4 main0(
         float pointSpecular = pow(
             max(dot(normal, halfDirPoint), 0.0),
             shininess
-        ) * specularStrength;
+        ) * directSpecularStrength;
 
         finalColor +=
-            baseColor * pointLight.color.rgb * pointDiffuse * intensity * attenuation +
-            pointLight.color.rgb * pointSpecular * intensity * attenuation;
+            baseColor * (1.0 - metallic) * pointLight.color.rgb * pointDiffuse * intensity * attenuation +
+            specularColor * pointLight.color.rgb * pointSpecular * intensity * attenuation;
     }
 
     float fogEnabled = camera.fogColor.a;
     float fogStart = camera.fogParams.x;
     float fogEnd = camera.fogParams.y;
     float fogFactor = saturate((input.viewDepth - fogStart) / max(fogEnd - fogStart, 0.001));
-    finalColor = mix(finalColor, camera.fogColor.rgb, fogFactor * fogEnabled);
+    finalColor = mix(finalColor, srgbToLinear(camera.fogColor.rgb), fogFactor * fogEnabled);
+    finalColor = finalColor / (finalColor + float3(1.0));
 
-    return float4(finalColor, texColor.a * material.baseColor.a);
+    return float4(linearToSrgb(finalColor), texColor.a * material.baseColor.a);
 }

@@ -34,7 +34,7 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene(), m_font("as
         << "\n";
 
     engine::Transform kartTransform;
-    kartTransform.scale = glm::vec3(0.04);
+    kartTransform.scale = glm::vec3(0.25);
     kartTransform.position.z = -10.0f;
     kartTransform.position.y = 30.0f;
 
@@ -56,13 +56,13 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene(), m_font("as
     m_scene.skybox.cubemap = m_assets.loadCubemap("assets/skyboxes/day");
     m_scene.addModel(m_assets.loadModel(trackModelPath, {}, engine::BatchStrategy::MATERIAL_AND_CHUNK));
 
-    m_scene.addDynamicModel(m_kartEntity, m_assets.loadModel("assets/models/go_kart.glb", kartTransform, engine::BatchStrategy::MATERIAL));
+    m_scene.addDynamicModel(m_kartEntity, m_assets.loadModel("assets/models/mario_kart.glb", kartTransform, engine::BatchStrategy::MATERIAL));
 }
 
 void Game::update(float dt){
     m_vehicleMovementSystem.update(m_world, input(), dt);
     m_physicsSystem.snapEntityToTerrain(m_world, m_kartEntity, 1.6f, 0.0f, 100.0f);
-    // m_thirdPersonCameraSystem.update(m_world, dt);
+    m_thirdPersonCameraSystem.update(m_world, dt);
 
     auto* cameraTransform = m_world.get<engine::TransformComponent>(m_cameraEntity);
     if (cameraTransform)

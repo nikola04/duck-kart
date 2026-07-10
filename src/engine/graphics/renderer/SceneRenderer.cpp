@@ -174,11 +174,13 @@ namespace engine {
 
         const Texture* textureToBind = material.texture ? material.texture : &context.whiteTexture;
         const Texture* normalTextureToBind = material.normalTexture ? material.normalTexture : &context.defaultNormalTexture;
+        const Texture* metallicRoughnessTextureToBind = material.metallicRoughnessTexture ? material.metallicRoughnessTexture : &context.defaultMetallicRoughnessTexture;
 
-        constexpr std::size_t bindingsCount = 3 + ShadowCascadeCount;
+        constexpr std::size_t bindingsCount = 4 + ShadowCascadeCount;
         SDL_GPUTextureSamplerBinding bindings[bindingsCount] = {
             { .texture = textureToBind->handle(), .sampler = context.defaultSampler },
             { .texture = normalTextureToBind->handle(), .sampler = context.defaultSampler },
+            { .texture = metallicRoughnessTextureToBind->handle(), .sampler = context.defaultSampler },
             { .texture = skybox.cubemap->handle(), .sampler = context.defaultSampler },
         };
 

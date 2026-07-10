@@ -55,7 +55,7 @@ namespace engine {
         m_mainPipeline.emplace(m_device, "assets/shaders/default.vert.msl", "assets/shaders/default.frag.msl", GraphicsPipelineInfo{
             .colorFormat = SDL_GetGPUSwapchainTextureFormat(m_device, m_window.handle()),
             .depthFormat = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
-            .fragmentSamplers = 3 + ShadowCascadeCount,
+            .fragmentSamplers = 4 + ShadowCascadeCount,
             .vertexUniformBuffers = 2,
             .fragmentUniformBuffers = 4
         });
@@ -129,6 +129,9 @@ namespace engine {
         const std::uint8_t normalPixels[4] = { 128, 128, 255, 255 };
         m_default_normal_texture = std::make_unique<Texture>(resources().createTexture(normalPixels, 1, 1, false));
 
+        const std::uint8_t metallicRoughnessPixels[4] = { 255, 255, 0, 255 };
+        m_default_metallic_roughness_texture = std::make_unique<Texture>(resources().createTexture(metallicRoughnessPixels, 1, 1, false));
+
         m_skyboxMesh.emplace(resources().createRenderMesh(createSkyboxMesh()));
         m_uiQuadMesh.emplace(resources().createRenderMesh(createQuad2D({0, 0}, {1, 1})));
     }
@@ -143,6 +146,7 @@ namespace engine {
         m_uiQuadMesh.reset();
         m_white_texture.reset();
         m_default_normal_texture.reset();
+        m_default_metallic_roughness_texture.reset();
 
         for (auto& shadowMap : m_shadowMaps)
             shadowMap.reset();
@@ -220,6 +224,7 @@ namespace engine {
             .shadowSampler = m_shadow_sampler,
             .whiteTexture = *m_white_texture,
             .defaultNormalTexture = *m_default_normal_texture,
+            .defaultMetallicRoughnessTexture = *m_default_metallic_roughness_texture,
             .shadowMaps = m_shadowMaps,
             .shadowCameras = m_shadowCameras,
         });

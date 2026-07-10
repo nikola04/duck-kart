@@ -34,7 +34,7 @@ namespace engine {
         glm::vec4 direction{0.05f, -0.25f, 0.2f, 0.0f};
         glm::vec4 color{1.0f, 0.98f, 0.92f, 5.0f};
         glm::vec4 ambient{0.08f, 0.08f, 0.09f, 1.0f};
-        glm::vec4 properties{1.5f, 1.1f, 0.0f, 0.0f};
+        glm::vec4 properties{2.f, 1.5f, 0.0f, 0.0f};
     };
 
     struct PointLight {
@@ -47,6 +47,7 @@ namespace engine {
         const Texture* texture{};
         glm::vec2 position{};
         glm::vec2 size{};
+
         glm::vec4 color{1, 1, 1, 1};
     };
 

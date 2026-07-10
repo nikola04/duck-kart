@@ -57,11 +57,11 @@ namespace engine {
         return it->second.get();
     }
 
-    Material* AssetsManager::createMaterial(const std::string& name, const LoadedMaterial& loadedMaterial, const Texture* texture, const Texture* normalTexture) {
+    Material* AssetsManager::createMaterial(const std::string& name, const LoadedMaterial& loadedMaterial, const Texture* texture, const Texture* normalTexture, const Texture* metallicRoughnessTexture) {
         if (auto* material = getMaterial(name))
             return material;
 
-        auto material = std::make_unique<Material> (glm::vec4(loadedMaterial.baseColor, 1.0f), texture, normalTexture, loadedMaterial.metallic, loadedMaterial.roughness, loadedMaterial.alphaMode, loadedMaterial.alphaCutoff);
+        auto material = std::make_unique<Material> (glm::vec4(loadedMaterial.baseColor, 1.0f), texture, normalTexture, metallicRoughnessTexture, loadedMaterial.metallic, loadedMaterial.roughness, loadedMaterial.alphaMode, loadedMaterial.alphaCutoff);
         Material* ptr = material.get();
 
         m_materials.emplace(name, std::move(material));
@@ -147,11 +147,13 @@ namespace engine {
                 const auto& loadedMaterial = model.materials[loadedMesh.material];
                 const Texture* texture = nullptr;
                 const Texture* normalTexture = nullptr;
+                const Texture* metallicRoughnessTexture = nullptr;
 
                 if (loadedMaterial.baseColorTexture >= 0) texture = getTexture(modelName + "#texture_" + std::to_string(loadedMaterial.baseColorTexture));
                 if (loadedMaterial.normalTexture >= 0) normalTexture = getTexture(modelName + "#texture_" + std::to_string(loadedMaterial.normalTexture));
+                if (loadedMaterial.metallicRoughnessTexture >= 0) metallicRoughnessTexture = getTexture(modelName + "#texture_" + std::to_string(loadedMaterial.metallicRoughnessTexture));
 
-                material = createMaterial(modelName + "#material_" + std::to_string(loadedMesh.material), loadedMaterial, texture, normalTexture);
+                material = createMaterial(modelName + "#material_" + std::to_string(loadedMesh.material), loadedMaterial, texture, normalTexture, metallicRoughnessTexture);
             }
 
             renderModel.objects.push_back(engine::RenderObject{
