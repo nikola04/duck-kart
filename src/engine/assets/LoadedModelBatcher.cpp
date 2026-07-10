@@ -90,4 +90,64 @@ namespace engine {
 
         return batchedModel;
     }
+
+    LoadedModel LoadedModelBatcher::batchByMaterial(LoadedModel model) {
+        std::unordered_map<int, MeshBatch> batches;
+
+        for (const LoadedMesh& loadedMesh : model.meshes) {
+            const auto& vertices = loadedMesh.mesh.vertices();
+            const auto& indices = loadedMesh.mesh.indices();
+
+            for (std::size_t i = 0; i < indices.size(); i += 3) {
+                const Vertex& a = vertices[indices[i + 0]];
+                const Vertex& b = vertices[indices[i + 1]];
+                const Vertex& c = vertices[indices[i + 2]];
+
+                AABB triangleBounds;
+                triangleBounds.expand(a.position);
+                triangleBounds.expand(b.position);
+                triangleBounds.expand(c.position);
+
+                MeshBatch& batch = batches[loadedMesh.material];
+
+                const std::uint32_t base = static_cast<std::uint32_t>(batch.vertices.size());
+
+                batch.vertices.push_back(a);
+                batch.vertices.push_back(b);
+                batch.vertices.push_back(c);
+                batch.indices.push_back(base);
+                batch.indices.push_back(base + 1);
+                batch.indices.push_back(base + 2);
+
+                batch.bounds.expand(a.position);
+                batch.bounds.expand(b.position);
+                batch.bounds.expand(c.position);
+            }
+        }
+
+        LoadedModel batchedModel;
+        batchedModel.materials = std::move(model.materials);
+        batchedModel.textures = std::move(model.textures);
+
+        const std::size_t sourceMeshCount = model.meshes.size();
+
+        for (auto& [material, batch] : batches) {
+            if (batch.vertices.empty() || batch.indices.empty())
+                continue;
+
+            batchedModel.meshes.push_back(LoadedMesh{
+                .mesh = Mesh{std::move(batch.vertices), std::move(batch.indices)},
+                .material = material,
+                .bounds = batch.bounds,
+            });
+        }
+
+        std::cout << "Batched model by material: meshes " << sourceMeshCount
+                  << " -> " << batchedModel.meshes.size()
+                  << ", materials " << batchedModel.materials.size()
+                  << ", textures " << batchedModel.textures.size()
+                  << std::endl;
+
+        return batchedModel;
+    }
 }

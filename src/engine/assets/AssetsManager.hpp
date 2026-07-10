@@ -8,11 +8,17 @@
 #include <unordered_map>
 
 namespace engine {
+    enum class BatchStrategy {
+        MATERIAL,
+        MATERIAL_AND_CHUNK,
+        NONE
+    };
+
     class AssetsManager {
         public:
             AssetsManager(Renderer& renderer);
 
-            RenderModel loadModel(const std::filesystem::path& path, Transform transform);
+            RenderModel loadModel(const std::filesystem::path& path, Transform transform, BatchStrategy batchStrategy = BatchStrategy::MATERIAL);
             const Cubemap* loadCubemap(const std::filesystem::path& path);
 
             RenderMesh* getRenderMesh(const std::string& name);

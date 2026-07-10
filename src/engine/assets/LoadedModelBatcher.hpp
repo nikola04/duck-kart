@@ -28,6 +28,7 @@ namespace engine {
 
     class LoadedModelBatcher {
         public:
+            static LoadedModel batchByMaterial(LoadedModel model);
             static LoadedModel batchByMaterialAndChunk(LoadedModel model, float chunkSize);
     };
 }

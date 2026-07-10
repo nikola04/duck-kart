@@ -4,6 +4,7 @@
 #include "../engine/world/components/FreeCameraControllerComponent.hpp"
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_scancode.h>
+#include <glm/fwd.hpp>
 #include <string>
 
 Game::Game(): engine::Application(), m_assets(renderer()), m_scene(), m_font("assets/fonts/geist_pixel/GeistPixel-Regular-VariableFont_ELSH.ttf", 16), m_freeCameraSystem() {
@@ -17,8 +18,11 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene(), m_font("as
     m_scene.camera.fov = 90;
 
     m_scene.skybox.cubemap = m_assets.loadCubemap("assets/skyboxes/day");
-    m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track.glb", {}));
-    // m_scene.addModel(m_assets.loadModel("assets/models/moorhuhn_kart_2_farm.glb", {}));
+    m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track.glb", {}, engine::BatchStrategy::MATERIAL_AND_CHUNK));
+    engine::Transform kartTransform;
+    kartTransform.scale = glm::vec3(0.04);
+    kartTransform.position.z = -10.0f;
+    m_scene.addModel(m_assets.loadModel("assets/models/go_kart.glb", kartTransform, engine::BatchStrategy::MATERIAL));
 }
 
 void Game::update(float dt){

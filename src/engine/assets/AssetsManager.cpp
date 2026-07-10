@@ -1,5 +1,6 @@
 #include "AssetsManager.hpp"
 #include "GLTFLoader.hpp"
+#include "LoadedModel.hpp"
 #include "LoadedModelBatcher.hpp"
 #include "../settings/EngineSettings.hpp"
 #include <cstddef>
@@ -66,14 +67,24 @@ namespace engine {
         return ptr;
     }
 
-    RenderModel AssetsManager::loadModel(const std::filesystem::path& path, Transform transform) {
+    LoadedModel batchModel(LoadedModel model, BatchStrategy strategy) {
+        if (strategy == BatchStrategy::MATERIAL_AND_CHUNK)
+            return LoadedModelBatcher::batchByMaterialAndChunk(model, settings().world.chunkSize);
+        if(strategy == BatchStrategy::MATERIAL)
+            return LoadedModelBatcher::batchByMaterial(model);
+
+        return model;
+    };
+
+    RenderModel AssetsManager::loadModel(const std::filesystem::path& path, Transform transform, BatchStrategy batchStrategy) {
         std::string modelName = path.generic_string();
         engine::LoadedModel model;
 
         if (path.extension() == ".glb" || path.extension() == ".gltf") {
             GLTFLoader loader;
-            model = LoadedModelBatcher::batchByMaterialAndChunk(loader.loadModel(path), settings().world.chunkSize);
-        } else throw std::runtime_error(std::string("Unsupported model format on path: ") + path.generic_string());
+            model = batchModel(loader.loadModel(path), batchStrategy);
+        } else
+            throw std::runtime_error(std::string("Unsupported model format on path: ") + path.generic_string());
 
         for (std::size_t i = 0; i < model.textures.size(); i++) {
             std::string name = modelName + "#texture_" + std::to_string(i);
