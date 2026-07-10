@@ -49,6 +49,17 @@ namespace engine {
             }
         }
 
+        for (const auto& dynamicModel : scene.dynamicModels) {
+            for (const auto& object : dynamicModel.model.objects) {
+                if (!cameraFrustum.intersects(object.bounds))
+                    continue;
+
+                draw(context, *object.mesh, object.transform, scene.camera, *object.material, scene.skybox, scene.sun, pointLightUniforms, scene.fog, fogStart, fogEnd);
+                stats.visibleObjects++;
+                stats.drawCalls++;
+            }
+        }
+
         drawSkybox(context, scene.skybox, scene.camera);
         stats.drawCalls++;
 

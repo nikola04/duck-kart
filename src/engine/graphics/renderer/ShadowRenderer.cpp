@@ -25,6 +25,15 @@ namespace engine {
                 drawShadow(context, *object.mesh, object.transform, *object.material, cascade);
             }
         }
+
+        for (const auto& dynamicModel : scene.dynamicModels) {
+            for (const auto& object : dynamicModel.model.objects) {
+                if (!shadowFrustum.intersects(object.bounds))
+                    continue;
+
+                drawShadow(context, *object.mesh, object.transform, *object.material, cascade);
+            }
+        }
     }
 
     void ShadowRenderer::drawShadow(const Context& context, const RenderMesh& mesh, const Transform& transform, const Material& material, std::size_t cascade) const {

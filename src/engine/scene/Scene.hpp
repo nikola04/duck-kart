@@ -5,6 +5,7 @@
 #include "RenderObject.hpp"
 #include "Skybox.hpp"
 #include "../settings/EngineSettings.hpp"
+#include "../world/World.hpp"
 #include <cmath>
 #include <cstdint>
 #include <glm/vec3.hpp>
@@ -16,6 +17,12 @@
 namespace engine {
     struct RenderModel {
         std::vector<RenderObject> objects;
+    };
+
+    struct DynamicRenderModel {
+        Entity entity = NullEntity;
+        RenderModel model;
+        Transform localTransform;
     };
 
     struct SceneStats {
@@ -57,11 +64,13 @@ namespace engine {
         FogSettings fog;
 
         std::unordered_map<ChunkCoords, RenderChunk, ChunkCoordsHash> chunks;
+        std::vector<DynamicRenderModel> dynamicModels;
         std::vector<PointLight> pointLights;
         WorldSettings worldSettings = settings().world;
 
         void clear() {
             chunks.clear();
+            dynamicModels.clear();
             uiTextures.clear();
         }
 
@@ -83,12 +92,57 @@ namespace engine {
                       << std::endl;
         }
 
+        void addDynamicModel(Entity entity, RenderModel&& model, const Transform& localTransform = {}) {
+            const std::size_t addedObjects = model.objects.size();
+            dynamicModels.push_back(DynamicRenderModel{
+                .entity = entity,
+                .model = std::move(model),
+                .localTransform = localTransform,
+            });
+
+            std::cout << "Scene addDynamicModel: entity " << entity
+                      << ", added objects " << addedObjects
+                      << ", total dynamic models " << dynamicModels.size()
+                      << std::endl;
+        }
+
+        void updateDynamicModelTransform(Entity entity, const Transform& transform) {
+            for (auto& dynamicModel : dynamicModels) {
+                if (dynamicModel.entity != entity)
+                    continue;
+
+                for (auto& object : dynamicModel.model.objects) {
+                    Transform objectTransform = transform;
+                    objectTransform.position += dynamicModel.localTransform.position;
+                    objectTransform.rotation += dynamicModel.localTransform.rotation;
+                    objectTransform.scale *= dynamicModel.localTransform.scale;
+
+                    object.transform = objectTransform;
+                    object.bounds = object.localBounds.transformed(objectTransform.matrix());
+                }
+
+                return;
+            }
+        }
+
+        const DynamicRenderModel* dynamicModel(Entity entity) const {
+            for (const auto& dynamicModel : dynamicModels) {
+                if (dynamicModel.entity == entity)
+                    return &dynamicModel;
+            }
+
+            return nullptr;
+        }
+
         SceneStats stats() const {
             SceneStats result{};
             result.chunks = chunks.size();
 
             for (const auto& [coords, chunk] : chunks)
                 result.objects += chunk.objects.size();
+
+            for (const auto& dynamicModel : dynamicModels)
+                result.objects += dynamicModel.model.objects.size();
 
             return result;
         }

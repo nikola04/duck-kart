@@ -18,6 +18,10 @@ add_executable(main
     src/engine/core/Input.cpp
     src/engine/world/World.cpp
     src/engine/world/systems/FreeCameraControllerSystem.cpp
+    src/engine/world/systems/PhysicsSystem.cpp
+    src/engine/world/systems/ThirdPersonCameraSystem.cpp
+    src/engine/world/systems/VehicleMovementSystem.cpp
+    src/engine/physics/TerrainCollider.cpp
     src/engine/graphics/Renderer.cpp
     src/engine/graphics/Mesh.cpp
     src/engine/graphics/renderer/RenderMesh.cpp

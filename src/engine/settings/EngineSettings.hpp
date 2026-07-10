@@ -15,9 +15,14 @@ namespace engine {
         float maxAnisotropy = 16.0f;
     };
 
+    struct PhysicsSettings {
+        float terrainCellSize = 16.0f;
+    };
+
     struct EngineSettings {
         WorldSettings world;
         GraphicsSettings graphics;
+        PhysicsSettings physics;
     };
 
     inline EngineSettings& settings() {

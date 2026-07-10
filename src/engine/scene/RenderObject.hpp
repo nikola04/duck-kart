@@ -11,6 +11,7 @@ namespace engine {
         const Material* material = nullptr;
         Transform transform;
 
+        AABB localBounds;
         AABB bounds;
     };
 }

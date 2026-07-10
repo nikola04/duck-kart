@@ -5,6 +5,7 @@
 #include "../settings/EngineSettings.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <glm/common.hpp>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -67,6 +68,23 @@ namespace engine {
         return ptr;
     }
 
+    LoadedModel* AssetsManager::getModel(const std::string& name) {
+        auto it = m_models.find(name);
+        if (it == m_models.end()) return nullptr;
+
+        return it->second.get();
+    }
+    LoadedModel* AssetsManager::createModel(const std::string& name, const LoadedModel& loadedModel) {
+        if (auto* model = getModel(name))
+            return model;
+
+        auto model = std::make_unique<LoadedModel>(loadedModel);
+        LoadedModel* ptr = model.get();
+
+        m_models.emplace(name, std::move(model));
+        return ptr;
+    }
+
     LoadedModel batchModel(LoadedModel model, BatchStrategy strategy) {
         if (strategy == BatchStrategy::MATERIAL_AND_CHUNK)
             return LoadedModelBatcher::batchByMaterialAndChunk(model, settings().world.chunkSize);
@@ -76,16 +94,42 @@ namespace engine {
         return model;
     };
 
-    RenderModel AssetsManager::loadModel(const std::filesystem::path& path, Transform transform, BatchStrategy batchStrategy) {
+    static std::string batchStrategyName(BatchStrategy strategy) {
+        switch (strategy) {
+            case BatchStrategy::MATERIAL:
+                return "material";
+            case BatchStrategy::MATERIAL_AND_CHUNK:
+                return "material_chunk";
+            case BatchStrategy::NONE:
+                return "none";
+        }
+
+        return "unknown";
+    }
+
+    LoadedModel AssetsManager::loadModelData(const std::filesystem::path& path, BatchStrategy batchStrategy) {
         std::string modelName = path.generic_string();
-        engine::LoadedModel model;
 
         if (path.extension() == ".glb" || path.extension() == ".gltf") {
             GLTFLoader loader;
-            model = batchModel(loader.loadModel(path), batchStrategy);
+
+            LoadedModel* model = getModel(modelName);
+            if (!model)
+                model = createModel(modelName, loader.loadModel(path));
+
+            return batchModel(*model, batchStrategy);
         } else
             throw std::runtime_error(std::string("Unsupported model format on path: ") + path.generic_string());
+    }
 
+    RenderModel AssetsManager::loadModel(const std::filesystem::path& path, Transform transform, BatchStrategy batchStrategy) {
+        std::string modelName = path.generic_string();
+        engine::LoadedModel model = loadModelData(path, batchStrategy);
+
+        return createRenderModel(modelName, model, transform, batchStrategy);
+    }
+
+    RenderModel AssetsManager::createRenderModel(const std::string& modelName, const LoadedModel& model, Transform transform, BatchStrategy batchStrategy) {
         for (std::size_t i = 0; i < model.textures.size(); i++) {
             std::string name = modelName + "#texture_" + std::to_string(i);
             createTexture(name, model.textures[i]);
@@ -95,7 +139,8 @@ namespace engine {
 
         for (std::size_t i = 0; i < model.meshes.size(); ++i) {
             const auto& loadedMesh = model.meshes[i];
-            engine::RenderMesh* renderMesh = createRenderMesh(modelName + "#mesh_" + std::to_string(i), loadedMesh.mesh);
+            const std::string meshName = modelName + "#batch_" + batchStrategyName(batchStrategy) + "#mesh_" + std::to_string(i);
+            engine::RenderMesh* renderMesh = createRenderMesh(meshName, loadedMesh.mesh);
 
             Material* material = &m_default_material;
             if (loadedMesh.material >= 0) {
@@ -113,6 +158,7 @@ namespace engine {
                 .mesh = renderMesh,
                 .material = material,
                 .transform = transform,
+                .localBounds = loadedMesh.bounds,
                 .bounds = loadedMesh.bounds.transformed(transform.matrix()),
             });
         }

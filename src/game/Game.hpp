@@ -5,7 +5,9 @@
 #include "../engine/assets/AssetsManager.hpp"
 #include "../engine/graphics/Font.hpp"
 #include "../engine/world/World.hpp"
-#include "../engine/world/systems/FreeCameraControllerSystem.hpp"
+#include "../engine/world/systems/PhysicsSystem.hpp"
+#include "../engine/world/systems/ThirdPersonCameraSystem.hpp"
+#include "../engine/world/systems/VehicleMovementSystem.hpp"
 #include "ui/DebugHud.hpp"
 
 class Game final : public engine::Application {
@@ -21,9 +23,13 @@ class Game final : public engine::Application {
         engine::AssetsManager m_assets;
         engine::World m_world;
         engine::Entity m_cameraEntity = engine::NullEntity;
+        engine::Entity m_terrainEntity = engine::NullEntity;
+        engine::Entity m_kartEntity = engine::NullEntity;
 
         // ----   systems   ----
-        engine::FreeCameraControllerSystem m_freeCameraSystem;
+        engine::PhysicsSystem m_physicsSystem;
+        engine::VehicleMovementSystem m_vehicleMovementSystem;
+        engine::ThirdPersonCameraSystem m_thirdPersonCameraSystem;
         // ---- END Systems ----
 
         engine::Font m_font;

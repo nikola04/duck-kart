@@ -18,8 +18,12 @@ namespace engine {
         public:
             AssetsManager(Renderer& renderer);
 
+            LoadedModel loadModelData(const std::filesystem::path& path, BatchStrategy batchStrategy = BatchStrategy::NONE);
             RenderModel loadModel(const std::filesystem::path& path, Transform transform, BatchStrategy batchStrategy = BatchStrategy::MATERIAL);
             const Cubemap* loadCubemap(const std::filesystem::path& path);
+
+            LoadedModel* getModel(const std::string& name);
+            LoadedModel* createModel(const std::string& name, const LoadedModel& model);
 
             RenderMesh* getRenderMesh(const std::string& name);
             RenderMesh* createRenderMesh(const std::string& name, const Mesh& mesh);
@@ -31,10 +35,13 @@ namespace engine {
             Material* createMaterial(const std::string& name, const LoadedMaterial& loadedMaterial, const Texture* texture, const Texture* normalTexture);
 
         private:
+            RenderModel createRenderModel(const std::string& modelName, const LoadedModel& model, Transform transform, BatchStrategy batchStrategy);
+
             Renderer& m_renderer;
 
             Material m_default_material;
 
+            std::unordered_map<std::string, std::unique_ptr<engine::LoadedModel>> m_models;
             std::unordered_map<std::string, std::unique_ptr<engine::Texture>> m_textures;
             std::unordered_map<std::string, std::unique_ptr<engine::Material>> m_materials;
             std::unordered_map<std::string, std::unique_ptr<RenderMesh>> m_render_meshes;
