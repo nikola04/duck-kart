@@ -17,6 +17,7 @@ add_executable(main
     src/engine/core/SDLContext.cpp
     src/engine/core/Input.cpp
     src/engine/world/World.cpp
+    src/engine/world/systems/FreeCameraControllerSystem.cpp
     src/engine/graphics/Renderer.cpp
     src/engine/graphics/Mesh.cpp
     src/engine/graphics/renderer/RenderMesh.cpp
@@ -43,7 +44,7 @@ add_executable(main
     src/engine/assets/LoadedModelBatcher.cpp
 
     src/game/Game.cpp
-    src/game/meshes/PyramidMesh.cpp
+    src/game/ui/DebugHud.cpp
 )
 
 target_link_libraries(main PRIVATE SDL3::SDL3 SDL3_ttf::SDL3_ttf glm::glm)

@@ -4,9 +4,9 @@
 #include "../engine/scene/Scene.hpp"
 #include "../engine/assets/AssetsManager.hpp"
 #include "../engine/graphics/Font.hpp"
-#include "../engine/graphics/TextTexture.hpp"
 #include "../engine/world/World.hpp"
-#include <memory>
+#include "../engine/world/systems/FreeCameraControllerSystem.hpp"
+#include "ui/DebugHud.hpp"
 
 class Game final : public engine::Application {
     public:
@@ -21,11 +21,11 @@ class Game final : public engine::Application {
         engine::AssetsManager m_assets;
         engine::World m_world;
         engine::Entity m_cameraEntity = engine::NullEntity;
+
+        // ----   systems   ----
+        engine::FreeCameraControllerSystem m_freeCameraSystem;
+        // ---- END Systems ----
+
         engine::Font m_font;
-        std::unique_ptr<engine::TextTexture> m_fpsText;
-        std::unique_ptr<engine::TextTexture> m_coordsText;
-        std::unique_ptr<engine::TextTexture> m_sceneStatsText;
-        float m_fpsTimer = 1.0f;
-        int m_fpsFrameCount = 0;
-        bool m_debugEnabled = true;
+        DebugHud m_debugHud;
 };
