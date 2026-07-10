@@ -17,7 +17,7 @@ namespace engine {
             transform->transform.rotation.x = std::clamp(transform->transform.rotation.x, -camera->maxPitch, camera->maxPitch);
 
             // keyboard movement
-            float speed = input.isKeyDown(SDL_SCANCODE_LCTRL) ? camera->speed * 10 : camera->speed;
+            float speed = input.isKeyDown(SDL_SCANCODE_LCTRL) ? camera->sprintSpeed : camera->speed;
 
             if (input.isKeyDown(SDL_SCANCODE_W))
                 transform->transform.position += transform->transform.forward() * speed * dt;

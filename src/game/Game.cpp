@@ -17,8 +17,8 @@ Game::Game(): engine::Application(), m_assets(renderer()), m_scene(), m_font("as
     m_scene.camera.fov = 90;
 
     m_scene.skybox.cubemap = m_assets.loadCubemap("assets/skyboxes/day");
-    // m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track.glb", {}));
-    m_scene.addModel(m_assets.loadModel("assets/models/moorhuhn_kart_2_farm.glb", {}));
+    m_scene.addModel(m_assets.loadModel("assets/models/drift_race_track.glb", {}));
+    // m_scene.addModel(m_assets.loadModel("assets/models/moorhuhn_kart_2_farm.glb", {}));
 }
 
 void Game::update(float dt){

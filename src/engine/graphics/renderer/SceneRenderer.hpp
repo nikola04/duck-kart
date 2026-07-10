@@ -52,7 +52,10 @@ namespace engine {
                 const Material& material,
                 const Skybox& skybox,
                 const DirectionalLight& light,
-                const PointLightUniforms& pointLights
+                const PointLightUniforms& pointLights,
+                const FogSettings& fog,
+                float fogStart,
+                float fogEnd
             ) const;
             void drawSkybox(const Context& context, const Skybox& skybox, const Camera& camera) const;
     };

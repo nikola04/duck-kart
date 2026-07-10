@@ -7,6 +7,7 @@
 #include "../settings/EngineSettings.hpp"
 #include <cmath>
 #include <cstdint>
+#include <glm/vec3.hpp>
 #include <iostream>
 #include <unordered_map>
 #include <utility>
@@ -42,10 +43,18 @@ namespace engine {
         glm::vec4 color{1, 1, 1, 1};
     };
 
+    struct FogSettings {
+        bool enabled = true;
+        glm::vec3 color{0.62f, 0.72f, 0.82f};
+        float startFactor = 0.55f;
+        float endFactor = 0.95f;
+    };
+
     struct Scene {
         Camera camera;
         Skybox skybox;
         DirectionalLight sun;
+        FogSettings fog;
 
         std::unordered_map<ChunkCoords, RenderChunk, ChunkCoordsHash> chunks;
         std::vector<PointLight> pointLights;

@@ -26,6 +26,9 @@ namespace engine {
         cameraFrustum.update(scene.camera.projectionMatrix(aspectRatio) * scene.camera.viewMatrix());
 
         ChunkCoords cameraChunk = scene.chunkCoordsFromPosition(scene.camera.transform.position);
+        const float visibleDistance = scene.worldSettings.chunkSize * (static_cast<float>(scene.worldSettings.viewDistanceChunks) + 0.5f);
+        const float fogStart = visibleDistance * scene.fog.startFactor;
+        const float fogEnd = visibleDistance * scene.fog.endFactor;
 
         for (const auto& [coords, chunk] : scene.chunks) {
             if (!cameraChunk.isInViewDistance(coords, scene.worldSettings.viewDistanceChunks))
@@ -40,7 +43,7 @@ namespace engine {
                 if (!cameraFrustum.intersects(object.bounds))
                     continue;
 
-                draw(context, *object.mesh, object.transform, scene.camera, *object.material, scene.skybox, scene.sun, pointLightUniforms);
+                draw(context, *object.mesh, object.transform, scene.camera, *object.material, scene.skybox, scene.sun, pointLightUniforms, scene.fog, fogStart, fogEnd);
                 stats.visibleObjects++;
                 stats.drawCalls++;
             }
@@ -105,7 +108,10 @@ namespace engine {
         const Material& material,
         const Skybox& skybox,
         const DirectionalLight& light,
-        const PointLightUniforms& pointLights
+        const PointLightUniforms& pointLights,
+        const FogSettings& fog,
+        float fogStart,
+        float fogEnd
     ) const {
         if (!context.renderPass)
             throw std::logic_error("SceneRenderer::draw called outside an active render pass");
@@ -135,6 +141,8 @@ namespace engine {
         CameraUniforms cameraUniforms{};
         cameraUniforms.position = glm::vec4{camera.transform.position, 1.0f};
         cameraUniforms.cascadeSplits = ShadowCascadeSplitsUniform;
+        cameraUniforms.fogColor = glm::vec4{fog.color, fog.enabled ? 1.0f : 0.0f};
+        cameraUniforms.fogParams = glm::vec4{fogStart, fogEnd, 0.0f, 0.0f};
         SDL_PushGPUFragmentUniformData(context.commandBuffer, 1, &cameraUniforms, sizeof(CameraUniforms));
         SDL_PushGPUFragmentUniformData(context.commandBuffer, 2, &light, sizeof(DirectionalLight));
         SDL_PushGPUFragmentUniformData(context.commandBuffer, 3, &pointLights, sizeof(PointLightUniforms));
